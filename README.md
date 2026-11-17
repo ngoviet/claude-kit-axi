@@ -1,4 +1,4 @@
-# savvy-progress-axi
+# claude-kit-axi
 
 Nghiên cứu và bản tối ưu của hai mod Claude Code trong
 [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) (MIT):
@@ -23,7 +23,7 @@ Cần Claude Code ≥ 2.1.287 (PC1: 2.1.311). **Không** nạp cùng lúc với 
 Một phiên:
 
 ```bash
-claude --plugin-dir D:/code/savvy-progress-axi/plugins/session-band
+claude --plugin-dir D:/code/claude-kit-axi/plugins/session-band
 ```
 
 Mọi phiên (kể cả desktop app): thêm vào `env` trong `~/.claude/settings.json`, nhiều thư mục cách
@@ -31,7 +31,7 @@ nhau bằng dấu phân cách danh sách đường dẫn của hệ: `;` trên W
 gốc chỉ ghi `:`), nối thêm nếu biến đã có. PC1 đã cài session-band theo cách này ngày 17/11/2026:
 
 ```json
-{ "env": { "CLAUDE_CODE_PLUGIN_DIRS": "D:/code/savvy-progress-axi/plugins/session-band" } }
+{ "env": { "CLAUDE_CODE_PLUGIN_DIRS": "D:/code/claude-kit-axi/plugins/session-band" } }
 ```
 
 Tuỳ chọn (trong `/config`, hoặc `pluginConfigs` của settings):
