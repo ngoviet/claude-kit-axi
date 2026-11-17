@@ -1,0 +1,48 @@
+{
+  "name": "savvy-progress",
+  "version": "1.2.1-axi.1",
+  "description": "Progress bar above the prompt for /savvy-flow, plus an agents panel (/agents-info): running, finished and planned subagents with model, task progress, context, cost and time. Optimized fork of johnnyvizz/claude-kit (MIT).",
+  "author": {
+    "name": "johnnyvizz (original); axi fork by ngoviet",
+    "url": "https://github.com/johnnyvizz"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Panel language",
+      "description": "auto follows Claude Code's language setting, then the system locale; en, ru, he (Hebrew, drawn right to left) or vi",
+      "default": "auto",
+      "options": [
+        "auto",
+        "en",
+        "ru",
+        "he",
+        "vi"
+      ]
+    },
+    "autoOpen": {
+      "type": "string",
+      "title": "Open the agents panel",
+      "description": "savvy: when a savvy-flow worker starts or a plan is reported; any: also when any other subagent starts",
+      "default": "savvy",
+      "options": [
+        "savvy",
+        "any"
+      ]
+    },
+    "subagentCacheTtl": {
+      "type": "string",
+      "title": "Subagent cache-write price",
+      "description": "5m: cache writes at 1.25x input (what Claude Code subagents write); 1h: at 2x input, as the original",
+      "default": "5m",
+      "options": [
+        "5m",
+        "1h"
+      ]
+    }
+  },
+  "homepage": "https://github.com/johnnyvizz/claude-kit/tree/main/plugins/savvy-progress",
+  "repository": "https://github.com/johnnyvizz/claude-kit",
+  "license": "MIT"
+}
