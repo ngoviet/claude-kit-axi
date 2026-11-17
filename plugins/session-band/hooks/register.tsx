@@ -3,7 +3,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Cache, Stats } from '../types'
+import type { Cache, Limit, Measure, Stats } from '../types'
 
 // Responses shorter than this are mostly tool-call stubs: their timing is noise.
 const MIN_TOKENS = 20
@@ -18,6 +18,19 @@ let CACHE_ALERT_S = 10 * 60
 // Minutes left at which the cache expiry is announced, once each per answer.
 let CACHE_NOTIFY_MINUTES: readonly number[] = [10, 5]
 
+// D: ngưỡng cảnh báo, mỗi ngưỡng báo một lần (context: mỗi lần đầy lại; hạn mức: mỗi cửa
+// sổ; ngân sách: mỗi phiên).
+const CONTEXT_STEPS = [70, 85] as const
+const LIMIT_STEPS = [80, 95] as const
+const BUDGET_STEPS = [75, 100] as const
+// Context tụt dưới mức này (sau /compact): các ngưỡng context được báo lại lần sau.
+const CONTEXT_REARM = 50
+// A: cần ít nhất chừng này thời gian quan sát trong một cửa sổ mới dự báo tốc độ đốt.
+const ETA_MIN_SAMPLE_MS = 10 * 60_000
+const ETA_ROUND_MS = 10 * 60_000
+// C: số ngày lịch sử giữ trong store.
+const HISTORY_DAYS = 120
+
 const SPEED = '#8b8cf8'
 const MONEY = '#4caf6e'
 const MUTED = '#8a8f8c'
@@ -29,6 +42,11 @@ const ALERT = '#e0846b'
 // ---------------------------------------------------------------------------
 // Chữ hiển thị: tiếng Anh như bản gốc, thêm tiếng Việt.
 
+const dur = (ms: number): string => {
+  const m = Math.max(0, Math.round(ms / 60_000))
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}`
+}
+
 const STRINGS = {
   en: {
     turn: 'Turn',
@@ -39,6 +57,21 @@ const STRINGS = {
     demo: (m: string) => `Cache demo: ${m} min left until the next answer resets it.`,
     noBand: 'Band not drawn yet.',
     width: (c: number, t: number) => `Band: ${c} columns, tier ${t}.`,
+    limitName: (k: string) => (k === 'five_hour' ? '5-hour limit' : k === 'seven_day' ? 'weekly limit' : 'spend limit'),
+    limitHit: (name: string, p: number, reset: string) => `${name} at ${p}%${reset ? `, resets in ${reset}` : ''}`,
+    limitEta: (name: string, eta: string) => `At this pace the ${name} fills in ~${eta}, before it resets`,
+    contextHit: (p: number) => `Context ${p}% full: consider /compact or a fresh session`,
+    budgetHit: (p: number, spent: string, budget: string) => `Session cost ${spent} is ${p}% of the ${budget} budget`,
+    measureStarted: (label: string) => `Measuring${label ? ` "${label}"` : ''}. Run /token stop when the task is done.`,
+    measureAlready: (label: string) => `Already measuring${label ? ` "${label}"` : ''}; /token stop first.`,
+    measureNone: 'Nothing is being measured. Start with /token start [label].',
+    measureHead: (label: string, d: string) => `Task${label ? ` "${label}"` : ''} · ${d}`,
+    measureLive: 'still running; /token stop ends it',
+    measureNote: 'Tokens cover every model request of this session in the window, subagents included; USD is the session cost ledger (/cost), API list prices.',
+    historyEmpty: 'No cost recorded yet.',
+    historyHead: (n: number) => `Cost, last ${n} days`,
+    historyTotal: 'Total',
+    historyTop: 'Top projects',
   },
   vi: {
     turn: 'Lượt',
@@ -49,6 +82,21 @@ const STRINGS = {
     demo: (m: string) => `Thử cache: còn ${m} phút, câu trả lời kế tiếp sẽ đặt lại.`,
     noBand: 'Thanh chưa được vẽ.',
     width: (c: number, t: number) => `Thanh: ${c} cột, mức ${t}.`,
+    limitName: (k: string) => (k === 'five_hour' ? 'hạn mức 5 giờ' : k === 'seven_day' ? 'hạn mức tuần' : 'hạn mức chi tiêu'),
+    limitHit: (name: string, p: number, reset: string) => `Đã dùng ${p}% ${name}${reset ? `, reset sau ${reset}` : ''}`,
+    limitEta: (name: string, eta: string) => `Theo tốc độ hiện tại, ${name} sẽ đầy sau ~${eta}, trước giờ reset`,
+    contextHit: (p: number) => `Context đã đầy ${p}%: nên /compact hoặc mở phiên mới`,
+    budgetHit: (p: number, spent: string, budget: string) => `Chi phí phiên ${spent}, bằng ${p}% ngân sách ${budget}`,
+    measureStarted: (label: string) => `Bắt đầu đo${label ? ` "${label}"` : ''}. Xong việc thì chạy /token stop.`,
+    measureAlready: (label: string) => `Đang đo${label ? ` "${label}"` : ''} rồi; chạy /token stop trước.`,
+    measureNone: 'Chưa đo gì. Bắt đầu bằng /token start [nhãn].',
+    measureHead: (label: string, d: string) => `Tác vụ${label ? ` "${label}"` : ''} · ${d}`,
+    measureLive: 'đang đo; /token stop để kết thúc',
+    measureNote: 'Token gồm mọi request model của phiên trong khung giờ, kể cả subagent; USD lấy từ sổ chi phí của phiên (/cost), giá API niêm yết.',
+    historyEmpty: 'Chưa ghi nhận chi phí nào.',
+    historyHead: (n: number) => `Chi phí ${n} ngày gần nhất`,
+    historyTotal: 'Tổng',
+    historyTop: 'Dự án tốn nhiều nhất',
   },
 } as const
 type Lang = keyof typeof STRINGS
@@ -75,6 +123,15 @@ const isBusy = atom({ plugin: 'session-band', key: 'isBusy' } as const, false)
 
 // The smallest CACHE_NOTIFY_MINUTES already announced since the last answer; 0 none.
 const warned = atom({ plugin: 'session-band', key: 'warned' } as const, 0)
+
+// A: các cửa sổ hạn mức của gói, chỉ ghi khi chữ hiển thị đổi.
+const limits = atom({ plugin: 'session-band', key: 'limits' } as const, [] as Limit[])
+
+// D: khoá các ngưỡng đã báo. Không ai đọc khi vẽ, nên ghi không làm thanh vẽ lại.
+const fired = atom({ plugin: 'session-band', key: 'fired' } as const, [] as string[])
+
+// B: phép đo đang chạy của /token.
+const measure = atom({ plugin: 'session-band', key: 'measure' } as const, null as Measure | null)
 
 // --- Hình vẽ: chuỗi SVG cố định dựng một lần; hình phụ thuộc số được nhớ theo số.
 
@@ -126,7 +183,9 @@ const contextBar = memo(percent => {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 6" width="80" height="6"><rect width="80" height="6" rx="3" fill="${MUTED}" fill-opacity="0.3"/><rect width="${w}" height="6" rx="3" fill="${color}"/></svg>`
 })
 
-const pad = (n: number) => String(n).padStart(2, '0')
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
 const usd = (n: number) => `$${n.toFixed(2)}`
 
 // Density by the band's width in cells, so the row shrinks instead of wrapping:
@@ -138,6 +197,8 @@ const tierFor = (columns: number) => {
   const i = TIER_MIN.findIndex(min => columns >= min)
   return i === -1 ? TIER_MIN.length : i
 }
+// A: cột thêm cần cho hạn mức; thiếu thì bỏ hạn mức trước khi hạ mức thanh.
+const LIMIT_COLUMNS = 12
 
 // Last measured width, for `/session_data width` while tuning TIER_MIN; debug only.
 let lastColumns: number | null = null
@@ -152,14 +213,131 @@ const cacheText = (left: number, perSecond: boolean, expired: string): string =>
   : perSecond || left <= CACHE_ALERT_S ? `${pad(Math.floor(left / 60))}:${pad(left % 60)}`
   : `${Math.ceil(left / 60)}m`
 
+// ---------------------------------------------------------------------------
+// A: hạn mức gói và dự báo chạm trần.
+
+const LIMIT_LABEL: Record<string, string> = { five_hour: '5h', seven_day: '7d', spend_limit: '$' }
+
+// Mốc đầu tiên thấy được của mỗi cửa sổ (theo giờ reset): tốc độ đốt = phần trăm tăng
+// thêm chia thời gian đã trôi. Biến module: mất khi reload thì chỉ đo lại từ đầu.
+const firstSeen = new Map<string, { resetsAt: number | null; percent: number; at: number }>()
+
+const readLimits = (raw: readonly { kind: string; percentUsed: number; resetsAt?: string }[], now: number): Limit[] =>
+  raw.map(r => {
+    const parsed = r.resetsAt ? Date.parse(r.resetsAt) : NaN
+    const resetsAt = Number.isFinite(parsed) ? parsed : null
+    const base = firstSeen.get(r.kind)
+    if (!base || base.resetsAt !== resetsAt || r.percentUsed < base.percent) {
+      firstSeen.set(r.kind, { resetsAt, percent: r.percentUsed, at: now })
+    }
+    const b = firstSeen.get(r.kind)!
+    let etaMs: number | null = null
+    const span = now - b.at
+    const gained = r.percentUsed - b.percent
+    if (span >= ETA_MIN_SAMPLE_MS && gained > 0 && r.percentUsed < 100) {
+      const eta = ((100 - r.percentUsed) / gained) * span
+      const untilReset = resetsAt === null ? Infinity : resetsAt - now
+      if (eta < untilReset) etaMs = Math.max(ETA_ROUND_MS, Math.round(eta / ETA_ROUND_MS) * ETA_ROUND_MS)
+    }
+    return { kind: r.kind, percent: Math.round(r.percentUsed), resetsAt, etaMs }
+  })
+
+const sameLimits = (a: Limit[], b: Limit[]) =>
+  a.length === b.length &&
+  a.every((x, i) => x.kind === b[i]!.kind && x.percent === b[i]!.percent && x.etaMs === b[i]!.etaMs && x.resetsAt === b[i]!.resetsAt)
+
+const limitColor = (l: Limit) => (l.percent >= LIMIT_STEPS[1] ? ALERT : l.percent >= LIMIT_STEPS[0] || l.etaMs !== null ? WARN : undefined)
+
+// ---------------------------------------------------------------------------
+// C: lịch sử chi phí theo ngày/dự án trong $.store (sống qua các phiên).
+
+type Day = { usd: number; projects: Record<string, number> }
+
+// Ngày theo giờ địa phương. Môi trường của mod có thể chạy giờ UTC, nên lệch múi giờ
+// lấy từ tuỳ chọn `utcOffset` (giờ), `auto` thì tin Date của môi trường.
+const dayKey = (now: number, offsetH: number | null): string => {
+  const shifted = offsetH === null ? now - new Date(now).getTimezoneOffset() * 60_000 : now + offsetH * 3_600_000
+  return `day:${new Date(shifted).toISOString().slice(0, 10)}`
+}
+
+const projectOf = async ($: EngineInterface) =>
+  (await $.session.cwd()).split(/[\\/]/).filter(Boolean).pop() ?? 'session'
+
+const r2 = (n: number) => Math.round(n * 10_000) / 10_000
+
+const flushHistory = async ($: EngineInterface, pending: { usd: number }, offsetH: number | null) => {
+  if (pending.usd <= 0) return
+  const amount = pending.usd
+  pending.usd = 0
+  const key = dayKey(await $.clock.now(), offsetH)
+  const project = await projectOf($)
+  const day = ((await $.store.get(key)) as Day | undefined) ?? { usd: 0, projects: {} }
+  day.usd = r2(day.usd + amount)
+  day.projects[project] = r2((day.projects[project] ?? 0) + amount)
+  await $.store.set(key, day)
+
+  const days = (await $.store.keys()).filter(k => k.startsWith('day:')).sort()
+  for (const old of days.slice(0, Math.max(0, days.length - HISTORY_DAYS))) await $.store.delete(old)
+}
+
+const historyText = async ($: EngineInterface, n: number, offsetH: number | null, lang: Lang) => {
+  const t = STRINGS[lang]
+  const now = await $.clock.now()
+  const rows: [string, Day][] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const key = dayKey(now - i * 86_400_000, offsetH)
+    const day = (await $.store.get(key)) as Day | undefined
+    if (day) rows.push([key.slice(4), day])
+  }
+  if (rows.length === 0) return t.historyEmpty
+
+  const total = rows.reduce((s, [, d]) => s + d.usd, 0)
+  const byProject = new Map<string, number>()
+  for (const [, d] of rows) for (const [p, v] of Object.entries(d.projects)) byProject.set(p, (byProject.get(p) ?? 0) + v)
+  const top = [...byProject].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const peak = Math.max(...rows.map(([, d]) => d.usd))
+  const bar = (v: number) => '█'.repeat(Math.max(1, Math.round((v / peak) * 20)))
+
+  return [
+    t.historyHead(n),
+    ...rows.map(([date, d]) => `${date}  ${usd(d.usd).padStart(9)}  ${bar(d.usd)}`),
+    `${t.historyTotal}: ${usd(total)}`,
+    `${t.historyTop}: ${top.map(([p, v]) => `${p} ${usd(v)}`).join(' · ')}`,
+  ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// B: đo token một tác vụ.
+
+const fmtInt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+
+const measureText = (m: Measure, now: number, usdNow: number, lang: Lang, isLive: boolean) => {
+  const t = STRINGS[lang]
+  const cost = usdNow - m.usdAtStart
+  return [
+    t.measureHead(m.label, dur(now - m.startedAt)) + (isLive ? ` (${t.measureLive})` : ''),
+    `calls ${fmtInt(m.calls)} · input ${fmtInt(m.input)} · cache_write ${fmtInt(m.cacheWrite)} · cache_read ${fmtInt(m.cacheRead)} · output ${fmtInt(m.output)}`,
+    `USD ${usd(cost)}`,
+    t.measureNote,
+  ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // Ghi chỉ khi có thay đổi: một lần ghi là một lần vẽ lại mọi chỗ đọc giá trị đó.
-const refresh = async ($: EngineInterface) => {
-  const { cost, context } = await $.session.usage()
+// Trả về phần chi phí tăng thêm từ lần trước (cho lịch sử).
+const refresh = async ($: EngineInterface): Promise<number> => {
+  const { cost, context, rateLimits } = await $.session.usage()
   const total = cost?.usd ?? 0
   const s = await read($, stats)
   const ctx = context.percent ?? s.context
-  if (s.total === total && s.context === ctx && s.turnCost === total - s.costAtStart) return
+
+  const next = readLimits(rateLimits, await $.clock.now())
+  if (!sameLimits(next, await read($, limits))) await update($, limits, () => next)
+
+  const gained = Math.max(0, total - s.total)
+  if (s.total === total && s.context === ctx && s.turnCost === total - s.costAtStart) return gained
   await update($, stats, p => ({ ...p, total, turnCost: total - p.costAtStart, context: context.percent ?? p.context }))
+  return gained
 }
 
 // Built by notifier/build.sh (macOS): posts the warning under Claude's icon.
@@ -185,11 +363,29 @@ const desktopSession = async ($: EngineInterface) => {
   return { id, title: typeof title === 'string' && title.trim() !== '' ? title.trim() : null }
 }
 
+// E: thông báo hệ thống qua kênh của Claude Code ($.ui.notify: desktop app, terminal hỗ
+// trợ thông báo), rồi PushNotification, cuối cùng toast. Trả về đã gửi được chưa.
+const notifyOs = async ($: EngineInterface, text: string, key: string, title?: string): Promise<boolean> => {
+  const sent = await $.ui.notify(text, { key, ...(title ? { title } : {}) }).catch(() => null)
+  // `terminal_bell` chỉ kêu, không hiện chữ: coi như chưa báo.
+  if (sent?.isSent === true && sent.channel !== 'terminal_bell') return true
+
+  const pushed = await $.tool
+    .call({ tool: 'PushNotification', message: title ? `${title}: ${text}` : text, status: 'proactive' })
+    .catch(() => null)
+  return (
+    pushed !== null &&
+    pushed.deny === undefined &&
+    pushed.isError !== true &&
+    (pushed.result.pushSent === true || pushed.result.localSent === true)
+  )
+}
+
 // The notifier's system notification (macOS), else Claude Code's own notification,
 // else a toast. The notifier is only looked for on macOS-style paths.
 const notifyCacheExpiry = async ($: EngineInterface, minutes: number, lang: Lang) => {
   // Windows dùng `\`: tách cả hai loại gạch để lấy đúng tên thư mục dự án.
-  const project = (await $.session.cwd()).split(/[\\/]/).filter(Boolean).pop() ?? 'session'
+  const project = await projectOf($)
   const message = STRINGS[lang].cacheIn(minutes)
 
   const notifier = `${$.plugin.root}/${NOTIFIER}`
@@ -210,17 +406,69 @@ const notifyCacheExpiry = async ($: EngineInterface, minutes: number, lang: Lang
     if (ran?.exitCode === 0) return
   }
 
-  const text = `${project}: ${message}`
-  const sent = await $.tool
-    .call({ tool: 'PushNotification', message: text, status: 'proactive' })
-    .catch(() => null)
-  const isDelivered =
-    sent !== null &&
-    sent.deny === undefined &&
-    sent.isError !== true &&
-    (sent.result.pushSent === true || sent.result.localSent === true)
+  if (!(await notifyOs($, message, 'session-band-cache', project))) $.ui.toast(`⏳ ${project}: ${message}`, { timeoutMs: 30000 })
+}
 
-  if (!isDelivered) $.ui.toast(`⏳ ${text}`, { timeoutMs: 30000 })
+// Tuỳ chọn đã đọc trong register; các hàm nhận `$` phải nằm ở cấp đầu tệp nên đọc từ đây.
+const CFG = { lang: 'en' as Lang, isAlerting: true, budgetUsd: null as number | null }
+
+// D: báo một lần cho mỗi khoá. `loud` thì gửi cả thông báo hệ thống.
+const alertOnce = async ($: EngineInterface, key: string, text: string, loud: boolean) => {
+  const seen = await read($, fired)
+  if (seen.includes(key)) return
+  await update($, fired, list => [...list, key].slice(-100))
+  $.ui.toast(`⚠ ${text}`, { timeoutMs: 15000 })
+  if (loud) await notifyOs($, text, `session-band-${key.split(':')[0]}`, await projectOf($))
+}
+
+const checkThresholds = async ($: EngineInterface) => {
+  if (!CFG.isAlerting) return
+  const s = await read($, stats)
+
+  if (s.context < CONTEXT_REARM) {
+    const seen = await read($, fired)
+    if (seen.some(k => k.startsWith('ctx:'))) await update($, fired, list => list.filter(k => !k.startsWith('ctx:')))
+  }
+  for (const step of CONTEXT_STEPS) {
+    if (s.context >= step) await alertOnce($, `ctx:${step}`, STRINGS[CFG.lang].contextHit(s.context), step === CONTEXT_STEPS[1])
+  }
+
+  const now = await $.clock.now()
+  for (const l of await read($, limits)) {
+    const name = STRINGS[CFG.lang].limitName(l.kind)
+    const window = l.resetsAt ?? 'none'
+    for (const step of LIMIT_STEPS) {
+      if (l.percent >= step) {
+        await alertOnce($, `lim:${l.kind}:${step}:${window}`, STRINGS[CFG.lang].limitHit(name, l.percent, l.resetsAt === null ? '' : dur(l.resetsAt - now)), step === LIMIT_STEPS[1])
+      }
+    }
+    if (l.etaMs !== null) await alertOnce($, `eta:${l.kind}:${window}`, STRINGS[CFG.lang].limitEta(name, dur(l.etaMs)), false)
+  }
+
+  if (CFG.budgetUsd !== null) {
+    const p = Math.floor((s.total / CFG.budgetUsd) * 100)
+    for (const step of BUDGET_STEPS) {
+      if (p >= step) await alertOnce($, `bud:${step}`, STRINGS[CFG.lang].budgetHit(p, usd(s.total), usd(CFG.budgetUsd)), step === BUDGET_STEPS[1])
+    }
+  }
+}
+
+// B: cộng usage của một request vào phép đo đang chạy.
+const addUsage = async ($: EngineInterface, u: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }) => {
+  const m = await read($, measure)
+  if (m === null) return
+  await update($, measure, p =>
+    p === null
+      ? p
+      : {
+          ...p,
+          calls: p.calls + 1,
+          input: p.input + u.input_tokens,
+          output: p.output + u.output_tokens,
+          cacheRead: p.cacheRead + u.cache_read_input_tokens,
+          cacheWrite: p.cacheWrite + u.cache_creation_input_tokens,
+        },
+  )
 }
 
 export const register: Register = (on, options) => {
@@ -234,6 +482,14 @@ export const register: Register = (on, options) => {
   CACHE_ALERT_S = isShort ? 60 : 10 * 60
   CACHE_NOTIFY_MINUTES = isShort ? [1] : [10, 5]
   const perSecond = options.countdown === 'seconds' || isShort
+  const showLimits = options.limits !== 'off'
+  const isAlerting = options.alerts !== 'off'
+  const budget = Number(options.budgetUsd)
+  CFG.lang = lang
+  CFG.isAlerting = isAlerting
+  CFG.budgetUsd = Number.isFinite(budget) && budget > 0 ? budget : null
+  const offset = Number(options.utcOffset)
+  const offsetH = options.utcOffset === undefined || options.utcOffset === '' || options.utcOffset === 'auto' || !Number.isFinite(offset) ? null : offset
   // Lượt chính đã gửi request nào chưa: lượt bị huỷ trước request đầu giữ hạn cache cũ
   // và không đặt lại `warned`, để thông báo vừa bắn không lặp lại.
   let requestedThisTurn = false
@@ -242,12 +498,23 @@ export const register: Register = (on, options) => {
   // request ghi/đọc nó bắt đầu, không phải lúc câu trả lời xong.
   let lastRequestAt: number | null = null
 
+  // C: chi phí chưa ghi xuống store; ghi khi lượt chính xong và khi phiên kết thúc.
+  const pending = { usd: 0 }
+
   on('session.start', async ($, e, next) => {
     const result = await next(e)
 
     await $.command.register({
       name: 'session_data',
       description: 'Show or hide the session band; `demo <minutes>` previews the cache warning',
+    })
+    await $.command.register({
+      name: 'token',
+      description: 'Measure a task: `start [label]`, `stop`, or no argument for the running count',
+    })
+    await $.command.register({
+      name: 'spend',
+      description: 'Cost per day and per project: `/spend [days]` (default 7)',
     })
 
     $.clock.every(1000, async () => {
@@ -271,6 +538,11 @@ export const register: Register = (on, options) => {
     })
 
     return result
+  })
+
+  on('session.end', async ($, e, next) => {
+    await flushHistory($, pending, offsetH).catch(() => undefined)
+    return next(e)
   })
 
   on('command.run', { command: 'session_data' }, async ($, e) => {
@@ -298,12 +570,40 @@ export const register: Register = (on, options) => {
     return { text: hidden ? t.hidden : t.shown }
   })
 
+  on('command.run', { command: 'token' }, async ($, e) => {
+    const [verb = '', ...rest] = e.args.trim().split(/\s+/)
+    const now = await $.clock.now()
+    const usdNow = (await $.session.usage()).cost?.usd ?? 0
+    const m = await read($, measure)
+
+    if (verb === 'start') {
+      if (m !== null) return { text: t.measureAlready(m.label) }
+      const label = rest.join(' ').slice(0, 80)
+      await update($, measure, () => ({ label, startedAt: now, usdAtStart: usdNow, calls: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0 }))
+      return { text: t.measureStarted(label) }
+    }
+    if (m === null) return { text: t.measureNone }
+    if (verb === 'stop') {
+      await update($, measure, () => null)
+      return { text: measureText(m, now, usdNow, lang, false) }
+    }
+    return { text: measureText(m, now, usdNow, lang, true) }
+  })
+
+  on('command.run', { command: 'spend' }, async ($, e) => {
+    await flushHistory($, pending, offsetH)
+    const n = Math.min(HISTORY_DAYS, Math.max(1, Math.floor(Number(e.args.trim()) || 7)))
+    return { text: await historyText($, n, offsetH, lang) }
+  })
+
   on('turn.start', async ($, e, next) => {
     // Lượt của subagent cũng phát turn.start: chỉ lượt của luồng chính được đếm, nếu
     // không số lượt tăng theo subagent và chi phí lượt bị đặt lại giữa chừng.
     if (e.agentId !== undefined) return next(e)
     const total = (await $.session.usage()).cost?.usd ?? 0
-    await update($, stats, s => ({ ...s, turn: s.turn + 1, costAtStart: total, total, turnCost: 0 }))
+    const s = await read($, stats)
+    pending.usd += Math.max(0, total - s.total)
+    await update($, stats, p => ({ ...p, turn: p.turn + 1, costAtStart: total, total, turnCost: 0 }))
     await update($, isBusy, () => true)
     requestedThisTurn = false
 
@@ -311,7 +611,11 @@ export const register: Register = (on, options) => {
   })
 
   on('turn.step', async function* ($, e, next) {
-    if (e.agentId !== undefined) return yield* next(e)
+    if (e.agentId !== undefined) {
+      const result = yield* next(e)
+      if (result.usage) await addUsage($, result.usage)
+      return result
+    }
 
     lastRequestAt = await $.clock.now()
     requestedThisTurn = true
@@ -320,7 +624,10 @@ export const register: Register = (on, options) => {
     // late burst is still timed: output_tokens counts it.
     let startedAt: number | null = null
 
-    for await (const chunk of next(e)) {
+    const it = next(e)[Symbol.asyncIterator]()
+    let item = await it.next()
+    while (!item.done) {
+      const chunk = item.value
       if (startedAt === null) startedAt = await $.clock.now()
 
       if (chunk.kind === 'stop' && chunk.usage !== null) {
@@ -334,14 +641,19 @@ export const register: Register = (on, options) => {
       }
 
       yield chunk
+      item = await it.next()
     }
+    const result = item.value
 
-    await refresh($)
+    if (result?.usage) await addUsage($, result.usage)
+    pending.usd += await refresh($)
+    await checkThresholds($)
+    return result
   })
 
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    await refresh($)
+    pending.usd += await refresh($)
 
     if (e.agentId === undefined) {
       await update($, isBusy, () => false)
@@ -351,6 +663,8 @@ export const register: Register = (on, options) => {
         await update($, cache, () => ({ expiresAt, secondsLeft: shownLeft(Math.max(0, Math.floor((expiresAt - now) / 1000)), perSecond) }))
         await update($, warned, () => 0)
       }
+      await checkThresholds($)
+      await flushHistory($, pending, offsetH).catch(() => undefined)
     }
 
     return result
@@ -379,7 +693,11 @@ export const register: Register = (on, options) => {
     const cacheLabel = e.props.isWorking ? '…' : secondsLeft === null ? '—' : cacheText(secondsLeft, perSecond, t.expired)
 
     lastColumns = e.props.bodyColumns
-    const tier = tierFor(e.props.bodyColumns)
+    // A: hạn mức chỉ hiện khi còn đủ chỗ sau khi dành chỗ cho phần gốc của thanh.
+    const all = showLimits ? await read($, limits) : []
+    const hasRoom = all.length > 0 && e.props.bodyColumns >= TIER_MIN[1] + LIMIT_COLUMNS
+    const tier = tierFor(e.props.bodyColumns - (hasRoom ? LIMIT_COLUMNS : 0))
+    const shownLimits = hasRoom ? all.filter(l => tier === 0 || l.kind === 'five_hour') : []
     const icon = tier >= 3 ? 18 : 22
 
     return (
@@ -414,6 +732,13 @@ export const register: Register = (on, options) => {
           {Svg ? <Svg source={CACHE_ICON[cacheColor] ?? ''} alt="cache" width={icon} height={icon} /> : <Text color={cacheColor}>⧗</Text>}
           <Text bold color={level ?? undefined}>{cacheLabel}</Text>
         </Box>
+        {shownLimits.map(l => (
+          <Box key={l.kind} flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
+            <Text dimColor>{LIMIT_LABEL[l.kind] ?? l.kind}</Text>
+            <Text bold color={limitColor(l)}>{`${l.percent}%`}</Text>
+            {l.etaMs !== null ? <Text color={WARN}>{`⚠${dur(l.etaMs)}`}</Text> : null}
+          </Box>
+        ))}
         <Box flexGrow={1} flexShrink={1} />
         <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
           {Svg ? <Svg source={contextIcon(s.context)} alt="context" width={icon} height={icon} /> : null}

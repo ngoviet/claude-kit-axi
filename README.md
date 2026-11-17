@@ -7,6 +7,10 @@ Nghiên cứu và bản tối ưu của hai mod Claude Code trong
   prompt, mức đầy context; báo trước khi cache hết hạn.
 - **savvy-progress**: thanh tiến độ cho `/savvy-flow` và bảng Agents (`/agents-info`).
 
+Tính năng thêm của bản axi (17/11/2026): hạn mức gói 5h/7d và dự báo chạm trần, cảnh báo theo
+ngưỡng, thông báo cache trên Windows, `/token` đo một tác vụ, `/spend` lịch sử chi phí, chi phí dưới
+mỗi hàng Agent — chi tiết ở `docs/thay-doi.md`.
+
 | Thư mục | Nội dung |
 | --- | --- |
 | `upstream/` | bản gốc nguyên trạng (commit `c871c153`) + LICENSE gốc |
@@ -38,8 +42,9 @@ Tuỳ chọn (trong `/config`, hoặc `pluginConfigs` của settings):
 
 ```json
 { "pluginConfigs": {
-    "session-band": { "options": { "language": "vi", "cacheTtl": "1h", "countdown": "minutes" } },
-    "savvy-progress": { "options": { "language": "vi", "subagentCacheTtl": "5m" } }
+    "session-band": { "options": { "language": "vi", "cacheTtl": "1h", "countdown": "minutes",
+                      "limits": "on", "alerts": "on", "budgetUsd": "", "utcOffset": "auto" } },
+    "savvy-progress": { "options": { "language": "vi", "subagentCacheTtl": "5m", "rowCost": "on" } }
 } }
 ```
 

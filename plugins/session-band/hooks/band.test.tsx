@@ -4,7 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 const PLUGIN = 'session-band'
-const band = { hasSurvey: false, isWorking: false, maxRows: 4, bodyColumns: 120, scroll: { offset: 0, bodyRows: 4 }, view: {} }
+const band = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 4, bodyColumns: 120, scroll: { offset: 0, bodyRows: 4 }, view: {} }
 const T0 = Date.parse('2026-11-17T08:00:00Z')
 
 async function session($: Engine, on: On) {

@@ -18,6 +18,22 @@ So sánh đầy đủ: `git diff --no-index upstream/<mod> plugins/<mod>`.
 | 9 | Ngôn ngữ | Tuỳ chọn `language`: `en` (gốc) / `vi` | — |
 | 10 | Bỏ | Thư mục `notifier/*.app` (sản phẩm build) không đưa vào repo; mã Swift giữ nguyên | — |
 
+## session-band `0.2.0-axi.1` → `0.3.0-axi.1` (tính năng mới, 17/11/2026)
+
+| ID | Tính năng | Cách làm | Kiểm |
+| --- | --- | --- | --- |
+| A | Hạn mức gói 5h / 7d trên thanh, kèm "⚠1h20" khi tốc độ đốt hiện tại làm đầy cửa sổ trước giờ reset | `$.session.usage().rateLimits`; tốc độ = % tăng từ mốc đầu của cửa sổ (≥ 10 phút quan sát), dự báo làm tròn 10 phút; chỉ ghi state khi chữ đổi; cần ≥ 76 cột, thiếu thì bỏ hạn mức trước. Tuỳ chọn `limits` | `features.test.tsx` A×3 |
+| B | `/token start [nhãn]`, `/token`, `/token stop`: 5 số token (calls · input · cache_write · cache_read · output) + USD của một tác vụ | token cộng từ `usage` của mọi `turn.step` (kể cả subagent); USD = chênh lệch sổ chi phí của phiên (`/cost`), nên không phụ thuộc giả định TTL ghi cache | test B |
+| C | `/spend [ngày]`: chi phí theo ngày và 5 dự án tốn nhất, qua nhiều phiên | `$.store` khoá `day:YYYY-MM-DD`, ghi khi lượt chính xong và khi phiên kết thúc, giữ 120 ngày. Tuỳ chọn `utcOffset` (mặc định `auto`) | test C |
+| D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×2 |
+| E | Thông báo cache sắp hết trên Windows / mọi hệ | sau notifier macOS: `$.ui.notify` (bỏ qua kênh chỉ kêu chuông) → `PushNotification` → toast | test E + 4 test cũ |
+
+## savvy-progress `1.2.1-axi.1` → `1.3.0-axi.1` (tính năng mới, 17/11/2026)
+
+| ID | Tính năng | Cách làm | Kiểm |
+| --- | --- | --- | --- |
+| F | Dưới mỗi hàng gọi Agent trong transcript: model · token · ≈chi phí · thời gian của đúng subagent đó | `ui.render` trên `ToolUse` (giữ hàng gốc bằng `next(e)`), nối qua `AgentRun.toolUseId`; không đọc atom `now` nên không vẽ lại mỗi giây. Tuỳ chọn `rowCost` | `row.test.tsx` ×3 |
+
 ## savvy-progress `1.2.1` → `1.2.1-axi.1`
 
 | # | Loại | Thay đổi | Kiểm |

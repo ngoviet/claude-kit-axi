@@ -21,6 +21,8 @@ export type AgentStatus = 'running' | 'done' | 'failed'
 export type AgentRun = {
   id: string
   agentId?: string
+  /** The Agent tool call that started it: its transcript row. */
+  toolUseId?: string
   type: string
   description: string
   model: string

@@ -1,6 +1,6 @@
 {
   "name": "savvy-progress",
-  "version": "1.2.1-axi.1",
+  "version": "1.3.0-axi.1",
   "description": "Progress bar above the prompt for /savvy-flow, plus an agents panel (/agents-info): running, finished and planned subagents with model, task progress, context, cost and time. Optimized fork of johnnyvizz/claude-kit (MIT).",
   "author": {
     "name": "johnnyvizz (original); axi fork by ngoviet",
@@ -39,6 +39,16 @@
       "options": [
         "5m",
         "1h"
+      ]
+    },
+    "rowCost": {
+      "type": "string",
+      "title": "Cost under each Agent call",
+      "description": "on: a line under each Agent tool call in the transcript with that subagent's model, tokens, estimated cost and time; off: none",
+      "default": "on",
+      "options": [
+        "on",
+        "off"
       ]
     }
   },

@@ -1020,6 +1020,7 @@ export const register: Register = (on, options) => {
       const run: AgentRun = {
         id: started.agentId ?? e.tool_use_id,
         agentId: started.agentId,
+        toolUseId: e.tool_use_id,
         type: e.subagentType,
         description: e.description,
         model: started.model,
@@ -1112,6 +1113,25 @@ export const register: Register = (on, options) => {
       await update($, now, () => at)
     }
     return next(e)
+  })
+
+  // F: dưới hàng gọi Agent trong transcript, một dòng model · token · chi phí · thời gian
+  // của đúng subagent đó. Không đọc `now` (đổi mỗi giây): dòng vẽ lại theo từng request.
+  on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
+    if (e.props.tool !== 'Agent' || options.rowCost === 'off') return next(e)
+    const run = (await read($, agents)).find(a => a.toolUseId === e.props.tool_use_id)
+    if (!run || (run.steps === 0 && run.status === 'running')) return next(e)
+
+    const { Box, Text } = $.ui.resolve(e)
+    const row = await next(e)
+    const at = await $.clock.now()
+    const line = `${runModel(run)} · ${fmtTokens(run.tokens)} tok · ≈${fmtCost(run.costUsd)} · ${fmtTime(elapsed(run, at))}`
+    return (
+      <Box flexDirection="column">
+        {row}
+        <Text dimColor wrap="truncate-end">{`  ${line}`}</Text>
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
