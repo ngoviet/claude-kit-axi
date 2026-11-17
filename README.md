@@ -27,7 +27,8 @@ claude --plugin-dir D:/code/savvy-progress-axi/plugins/session-band
 ```
 
 Mọi phiên (kể cả desktop app): thêm vào `env` trong `~/.claude/settings.json`, nhiều thư mục cách
-nhau bằng `:` (theo README gốc), nối thêm nếu biến đã có:
+nhau bằng dấu phân cách danh sách đường dẫn của hệ: `;` trên Windows, `:` trên macOS/Linux (README
+gốc chỉ ghi `:`), nối thêm nếu biến đã có. PC1 đã cài session-band theo cách này ngày 17/11/2026:
 
 ```json
 { "env": { "CLAUDE_CODE_PLUGIN_DIRS": "D:/code/savvy-progress-axi/plugins/session-band" } }
