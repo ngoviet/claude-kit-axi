@@ -142,7 +142,10 @@ bash tools/check.sh
 ```
 
 chạy trước mỗi commit và trong CI: kiểm mã chung đã đồng bộ, rồi `claude plugin validate`, `claude plugin test` và
-`tsc` cho từng mod (tsc tự bỏ qua khi máy không có tệp kiểu của Claude Code). Sửa mã chung ở `shared/`, rồi chạy
+`tsc` cho từng mod (tsc tự bỏ qua khi máy không có tệp kiểu của Claude Code). Job CI thứ hai kiểm giao diện của cả
+hai mod bằng [`design-kit check-mod --strict`](https://github.com/ngoviet/design-kit) (tràn dòng, chữ bị cắt, tương
+phản trên nền tối và sáng, cỡ chữ, luật engine, trên terminal và desktop ở 40–200 cột); ảnh chụp nằm ở artifact
+`check-mod-shots` của lượt chạy. Sửa mã chung ở `shared/`, rồi chạy
 `python3 tools/sync_shared.py`. So với bản gốc: `bash tools/bench/run.sh upstream/savvy-progress` và
 `bash tools/bench/run.sh plugins/agents-panel`. Chú thích trong mã và tài liệu viết bằng tiếng Việt.
 
