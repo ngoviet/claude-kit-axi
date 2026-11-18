@@ -8,8 +8,11 @@ cd "$repo"
 fail=0
 step() { printf '\n== %s\n' "$1"; }
 
+# Windows dùng trình chạy `py`; Linux (CI) dùng `python3`.
+if command -v py >/dev/null 2>&1; then PY=(py -3.12); else PY=(python3); fi
+
 step "mã chung (shared/ → hooks/lib/)"
-py -3.12 tools/sync_shared.py --check || fail=1
+"${PY[@]}" tools/sync_shared.py --check || fail=1
 
 # tsc cần tệp kiểu của engine. Engine chỉ đặt .claude-plugin/types/ khi nạp mod, nên lấy tệp
 # của skill plugin-authoring bản mới nhất trong thư mục tạm của Claude.

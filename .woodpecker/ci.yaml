@@ -1,0 +1,20 @@
+# CI trên Woodpecker tự host (https://ci.vokupt.top): repo private nên không dùng GitHub Actions.
+#
+# Chạy đúng lệnh kiểm trước khi commit, `bash tools/check.sh`: mã chung đã đồng bộ, rồi
+# `claude plugin validate` và `claude plugin test` cho từng mod. Bước tsc của check.sh tự bỏ
+# qua trên CI, vì tệp kiểu của engine chỉ có trên máy đã nạp skill plugin-authoring.
+# Phiên bản Claude Code ghim theo bản đang cài trên PC1; nâng ở PC1 thì nâng cả ở đây.
+
+when:
+  - event: pull_request
+  - event: push
+    branch: main
+  - event: manual
+
+steps:
+  - name: check
+    image: node:22-bookworm
+    commands:
+      - npm install -g --no-fund --no-audit @anthropic-ai/claude-code@2.1.311
+      - claude --version
+      - bash tools/check.sh
