@@ -1,7 +1,7 @@
 // A: hạn mức của gói (5 giờ, 7 ngày, chi tiêu) và dự báo lúc chạm trần.
 import type { Limit } from '../types'
 import { ETA_MIN_SAMPLE_MS, ETA_ROUND_MS, LIMIT_STEPS } from './config'
-import { ALERT, WARN } from './icons'
+import { TONE } from './icons'
 
 /** Nhãn ngắn trên thanh. */
 export const LIMIT_LABEL: Record<string, string> = { five_hour: '5h', seven_day: '7d', spend_limit: '$' }
@@ -55,6 +55,6 @@ export const sameLimits = (a: Limit[], b: Limit[]): boolean =>
   a.length === b.length &&
   a.every((x, i) => x.kind === b[i]!.kind && x.percent === b[i]!.percent && x.etaMs === b[i]!.etaMs && x.resetsAt === b[i]!.resetsAt)
 
-/** Đỏ từ ngưỡng cao; vàng từ ngưỡng thấp hoặc khi có dự báo đầy. */
+/** Màu lỗi từ ngưỡng cao; màu cảnh báo từ ngưỡng thấp hoặc khi có dự báo đầy (khoá theme). */
 export const limitColor = (l: Limit): string | undefined =>
-  l.percent >= LIMIT_STEPS[1] ? ALERT : l.percent >= LIMIT_STEPS[0] || l.etaMs !== null ? WARN : undefined
+  l.percent >= LIMIT_STEPS[1] ? TONE.alert : l.percent >= LIMIT_STEPS[0] || l.etaMs !== null ? TONE.warn : undefined

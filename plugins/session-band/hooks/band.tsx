@@ -4,7 +4,7 @@ import type { MatchedHook } from 'claude-code'
 
 import { cacheLevel, cacheText } from './cache'
 import { CFG } from './config'
-import { ALERT, CACHE, CACHE_ICON, MONEY, MONEY_ICON, SPEED, SPEED_ICON, WARN, contextBar, contextIcon } from './icons'
+import { ALERT, CACHE, CACHE_ICON, MONEY_ICON, SPEED_ICON, TONE, WARN, contextBar, contextIcon } from './icons'
 import { span, usd } from './lib/format'
 import { LIMIT_LABEL, limitColor } from './limits'
 import { CACHE0, LIMITS0, STATS0 } from './state'
@@ -51,8 +51,9 @@ export async function drawBand($: Parameters<BandHook>[0], e: Parameters<BandHoo
 
   const { secondsLeft } = await read($, cache)
   const lv = e.props.isWorking || secondsLeft === null ? null : cacheLevel(secondsLeft)
-  const level = lv === 'alert' ? ALERT : lv === 'warn' ? WARN : null
-  const cacheColor = level ?? CACHE
+  // Hex cho hình SVG, khoá theme cho chữ và viền.
+  const iconColor = lv === 'alert' ? ALERT : lv === 'warn' ? WARN : CACHE
+  const level = lv === 'alert' ? TONE.alert : lv === 'warn' ? TONE.warn : null
   const cacheLabel = e.props.isWorking ? '…' : secondsLeft === null ? '—' : cacheText(secondsLeft)
 
   lastDrawn.columns = e.props.bodyColumns
@@ -81,25 +82,25 @@ export async function drawBand($: Parameters<BandHook>[0], e: Parameters<BandHoo
       ) : null}
       {tier <= 3 ? (
         <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-          {Svg ? <Svg source={SPEED_ICON} alt="speed" width={icon} height={icon} /> : <Text color={SPEED}>⚡</Text>}
+          {Svg ? <Svg source={SPEED_ICON} alt="speed" width={icon} height={icon} /> : <Text color={TONE.speed}>⚡</Text>}
           <Text bold wrap="truncate-end">{tier <= 1 || s.speed === null ? speed : `${s.speed}/s`}</Text>
         </Box>
       ) : null}
       <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-        {Svg ? <Svg source={MONEY_ICON} alt="cost" width={icon} height={icon} /> : <Text color={MONEY}>$</Text>}
-        <Text bold color={MONEY}>{turnCost}</Text>
+        {Svg ? <Svg source={MONEY_ICON} alt="cost" width={icon} height={icon} /> : <Text color={TONE.money}>$</Text>}
+        <Text bold color={TONE.money}>{turnCost}</Text>
         {tier <= 2 ? <Text dimColor>|</Text> : null}
         {tier <= 2 ? <Text bold>{usd(s.total)}</Text> : null}
       </Box>
       <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-        {Svg ? <Svg source={CACHE_ICON[cacheColor] ?? ''} alt="cache" width={icon} height={icon} /> : <Text color={cacheColor}>⧗</Text>}
+        {Svg ? <Svg source={CACHE_ICON[iconColor] ?? ''} alt="cache" width={icon} height={icon} /> : <Text color={level ?? TONE.cache}>⧗</Text>}
         <Text bold color={level ?? undefined}>{cacheLabel}</Text>
       </Box>
       {shownLimits.map(l => (
         <Box key={l.kind} flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
           <Text dimColor>{LIMIT_LABEL[l.kind] ?? l.kind}</Text>
           <Text bold color={limitColor(l)}>{`${l.percent}%`}</Text>
-          {l.etaMs !== null ? <Text color={WARN}>{`⚠${span(l.etaMs)}`}</Text> : null}
+          {l.etaMs !== null ? <Text color={TONE.warn}>{`⚠${span(l.etaMs)}`}</Text> : null}
         </Box>
       ))}
       <Box flexGrow={1} flexShrink={1} />

@@ -11,6 +11,8 @@ type Totals = ReturnType<typeof totals>
 
 /** Màu của hàng agent (bản gốc tô theo hạng savvy-*, đã bỏ cùng savvy-flow). */
 export const AGENT_COLOR = '#888780'
+/** Màu chữ của hàng agent trên terminal: khoá theme, tự đổi theo theme sáng/tối (hex cứng thì không). */
+export const AGENT_TONE = 'inactive'
 export const HEADER_H = 44
 export const AGENT_H = 66
 /** Một hàng Text hay Button trên desktop cao khoảng 20px; lưới nền tính dư. */
@@ -112,7 +114,7 @@ export const headerSvg = (W: number, t: Totals): string => {
   const tw = (W - gap * 2) / 3
   const tile = (i: number, k: string, v: string) =>
     `<rect class="tile" x="${mx(W, i * (tw + gap), tw)}" y="0" width="${tw}" height="40" rx="8"/>
-<text class="s" ${startText(W, i * (tw + gap) + 9, 16)} font-family="${FONT}" font-size="11">${k}</text>
+<text class="s" ${startText(W, i * (tw + gap) + 9, 16)} font-family="${FONT}" font-size="12">${k}</text>
 <text class="t" ${startText(W, i * (tw + gap) + 9, 33, false)} font-family="${FONT}" font-size="15" font-weight="600" font-variant-numeric="tabular-nums">${v}</text>`
   return svg(W, HEADER_H, `${tile(0, s.cost, '≈' + usdShort(t.cost))}${tile(1, s.tokens, tokens(t.tokens))}${tile(2, s.time, stopwatch(t.time))}`)
 }
@@ -133,8 +135,8 @@ export const agentSvg = (W: number, a: AgentRun, at: number): string => {
     AGENT_H,
     `${rowCrab(W, 0, 14, costumeOf(a.type), a.status === 'running')}
 <text class="t" ${startText(W, 42, 18)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(a.description || a.type, 13, barW))}</text>
-<text ${startText(W, 42, 34)} font-family="${FONT}" font-size="11"><tspan fill="${AGENT_COLOR}">${xml(a.type)}</tspan><tspan class="s">  ${xml(meta.join('  ·  '))}</tspan></text>
-<text class="s" ${endText(W, 42 + barW, 49, true)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${stats}</text>
+<text ${startText(W, 42, 34)} font-family="${FONT}" font-size="12"><tspan fill="${AGENT_COLOR}">${xml(a.type)}</tspan><tspan class="s">  ${xml(meta.join('  ·  '))}</tspan></text>
+<text class="s" ${endText(W, 42 + barW, 49, true)} font-family="${FONT}" font-size="12" font-variant-numeric="tabular-nums">${stats}</text>
 <rect class="k" x="${mx(W, 42, barW)}" y="55" width="${barW}" height="4" rx="2"/><rect${progress === null ? ' class="m"' : ''} x="${mx(W, 42, fillW)}" y="55" width="${fillW}" height="4" rx="2"${progress === null ? '' : ` fill="${AGENT_COLOR}"`}/>
 ${statusMark(mx(W, W - 8), 16, a.status, AGENT_COLOR)}
 <line class="ln" x1="0" y1="${AGENT_H - 0.5}" x2="${W}" y2="${AGENT_H - 0.5}"/>`,

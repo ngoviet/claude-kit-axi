@@ -28,6 +28,13 @@ So sánh đầy đủ: `git diff --no-index upstream/session-band plugins/sessio
 | D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×2 |
 | E | Thông báo cache sắp hết trên Windows / mọi hệ | sau notifier macOS: `$.ui.notify` (bỏ qua kênh chỉ kêu chuông) → `PushNotification` → toast | test E + 4 test cũ |
 
+## Màu theo theme và chữ 12px (18/11/2026, sau `design-kit check-mod`)
+
+Lệnh `design-kit check-mod` (design-kit 0.3.0) dựng lại cây vẽ của mod trên terminal và desktop rồi đo như cổng web.
+- **session-band:** chữ và viền dùng màu hex cứng, chỉ đạt 2–2,9:1 trên terminal nền sáng (12 lỗi cứng). Chữ và viền nay dùng khoá theme của Claude Code (`TONE` trong `icons.ts`: `suggestion`, `success`, `planMode`, `warning`, `error`), tự đổi theo theme sáng/tối của người dùng; hex chỉ còn trong hình SVG của desktop.
+- **agents-panel:** chữ trong SVG của khung từ 11px lên 12px; chữ trên terminal dùng khoá theme `inactive`, `error`, `success` thay cho `#888780`, `red`, `green`.
+- Kết quả: agents-panel pass (572 bản vẽ, 0 lỗi cứng). session-band còn 4 lỗi cứng, cùng một nguyên nhân, **giữ có chủ ý**: khoá `warning` của theme sáng Claude Code (`#966c1e`) trên nền desktop `#faf9f5` đạt 4,46:1, ngưỡng 4,5:1. Đó là màu của chính theme Claude Code, màu khoá theme trên desktop là bản ước lượng của check-mod, và đổi sang `error` thì mất phân biệt mức cảnh báo với mức báo động. Một phát hiện mềm `text-cut` ở desktop 52 cột (bản phỏng 8px/ô) cũng giữ.
+
 ## session-band: biểu tượng trên terminal (18/11/2026)
 
 - Lỗi có từ bản gốc: thanh chọn vẽ biểu tượng bằng `'Svg' in ui`, mà bảng phần tử của terminal cũng có `Svg` và vẽ nó thành hộp rỗng (mất cả hình lẫn `alt`). Trên terminal các ký hiệu dự phòng ⚡ $ ⧗ vì thế không bao giờ hiện. Nay chỉ dùng Svg khi `e.surface !== 'terminal'`, như khung của agents-panel.
