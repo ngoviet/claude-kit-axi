@@ -75,7 +75,7 @@ Muốn chạy thẳng từ bản clone (để phát triển, hoặc theo sát `m
 `~/.claude/settings.json`; Windows phân cách bằng `;`, macOS và Linux bằng `:`:
 
 ```json
-{ "env": { "CLAUDE_CODE_PLUGIN_DIRS": "D:/code/claude-kit-axi/plugins/session-band;D:/code/claude-kit-axi/plugins/agents-panel" } }
+{ "env": { "CLAUDE_CODE_PLUGIN_DIRS": "/path/to/claude-kit-axi/plugins/session-band:/path/to/claude-kit-axi/plugins/agents-panel" } }
 ```
 
 ## Cách dùng
