@@ -42,7 +42,10 @@ export async function drawBand($: Parameters<BandHook>[0], e: Parameters<BandHoo
   const t = tr()
   const ui = $.ui.resolve(e)
   const { Box, Button, Text } = ui
-  const Svg = 'Svg' in ui ? ui.Svg : null
+  // Bảng phần tử của terminal cũng có `Svg` nhưng vẽ ra hộp rỗng (mất cả hình lẫn `alt`), nên
+  // chỉ dùng Svg ngoài terminal; terminal vẽ ký hiệu chữ ⚡ $ ⧗. Lỗi có từ bản gốc, tìm ra
+  // khi chạy thử design-kit check-mod (18/11/2026).
+  const Svg = e.surface !== 'terminal' && 'Svg' in ui ? ui.Svg : null
   const speed = s.speed === null ? '—' : `${s.speed} tok/s`
   const turnCost = s.turnCost === null ? '—' : usd(s.turnCost)
 

@@ -4,8 +4,8 @@
 
 ## Bắt đầu nhanh
 
-1. `git status`: cây làm việc phải sạch, `main` ở `b965df8` hoặc mới hơn. Chưa có remote.
-2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 16/16, agents-panel 22/22, tsc sạch).
+1. `git status`: cây làm việc phải sạch, `main` ở `b965df8` hoặc mới hơn. Remote `origin`: `ngoviet/claude-kit-axi` trên GitHub (private, repo độc lập, không phải fork).
+2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 17/17, agents-panel 22/22, tsc sạch).
 3. Đọc mục "Quy ước khi sửa mã" bên dưới trước khi đụng vào `plugins/`.
 4. Việc kế tiếp nên làm: thử hai mod trong một phiên thật (mục "Việc còn mở").
 
@@ -52,7 +52,7 @@
 | `notify.ts` | E: thông báo hệ thống. |
 | `band.tsx` | Vẽ thanh. |
 
-- Test: `band.test.tsx` có 5, `features.test.tsx` có 11.
+- Test: `band.test.tsx` có 6, `features.test.tsx` có 11.
 
 ### agents-panel
 
@@ -107,6 +107,8 @@ bash tools/check.sh
 Lệnh này lần lượt chạy:
 1. `sync_shared.py --check`.
 2. validate, test và tsc cho từng mod.
+
+CI: Woodpecker tự host (`.woodpecker/ci.yaml`) chạy đúng lệnh này khi có PR và khi push lên `main`; trên CI bước tsc tự bỏ qua vì không có tệp kiểu của engine.
 
 tsc dùng một tsconfig tạm, trỏ tới tệp kiểu của skill `plugin-authoring` bản mới nhất trong `%TEMP%/claude/bundled-skills/` (engine chỉ đặt `.claude-plugin/types/` khi nạp mod). Nếu chưa có tệp đó thì nạp skill `plugin-authoring` một lần.
 
@@ -177,5 +179,5 @@ Lấy từ skill `claude-api`, không đoán:
   - Ngày trong `/spend` có đúng giờ Việt Nam không. Nếu môi trường của mod chạy UTC thì đặt `utcOffset: "7"`.
   - Khung Agents có tự mở khi subagent đầu tiên chạy không, và dòng chi phí F có hiện dưới hàng gọi Agent không.
 - Ý tưởng G (tỉ lệ chi phí subagent / luồng chính trên thanh): chủ chưa chọn, còn trong trang đề xuất.
-- Chưa push, chưa có remote. Muốn chia sẻ thì theo mục "Sharing a mod" của skill `plugin-authoring`, nhưng phải hỏi chủ trước: repo public hay private.
+- Repo GitHub đang private (agent chọn vì đổi sang public sau vẫn được). Muốn chia sẻ thì theo mục "Sharing a mod" của skill `plugin-authoring`, nhưng phải hỏi chủ trước khi đổi sang public.
 - Giá fast mode của Fable 5.2 chưa có trong bản skill đang có trên máy.

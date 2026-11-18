@@ -28,6 +28,12 @@ So sánh đầy đủ: `git diff --no-index upstream/session-band plugins/sessio
 | D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×2 |
 | E | Thông báo cache sắp hết trên Windows / mọi hệ | sau notifier macOS: `$.ui.notify` (bỏ qua kênh chỉ kêu chuông) → `PushNotification` → toast | test E + 4 test cũ |
 
+## session-band: biểu tượng trên terminal (18/11/2026)
+
+- Lỗi có từ bản gốc: thanh chọn vẽ biểu tượng bằng `'Svg' in ui`, mà bảng phần tử của terminal cũng có `Svg` và vẽ nó thành hộp rỗng (mất cả hình lẫn `alt`). Trên terminal các ký hiệu dự phòng ⚡ $ ⧗ vì thế không bao giờ hiện. Nay chỉ dùng Svg khi `e.surface !== 'terminal'`, như khung của agents-panel.
+- Tìm ra khi chạy thử lệnh `design-kit check-mod` (đang làm ở repo design-kit, phép kiểm `svg-terminal`).
+- Test `icons: text symbols on the terminal, Svg on the desktop` (`band.test.tsx`): hỏng trên bản cũ, qua trên bản mới. session-band 17/17.
+
 ## Đổi tên savvy-progress → agents-panel (18/11/2026)
 
 Bỏ savvy-flow xong, mod chỉ còn khung Agents và dòng chi phí dưới hàng Agent, nên đổi tên cho khớp. Bản gốc vẫn ở `upstream/savvy-progress`: so sánh bằng `git diff --no-index upstream/savvy-progress plugins/agents-panel`.
