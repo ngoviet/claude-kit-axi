@@ -1,0 +1,10 @@
+# Kiểm README.md và README.vi.md theo chuẩn readme-axi (khung, mục, khớp EN/VI, khối Ủng hộ).
+name: README
+on:
+  push:
+    paths: [README.md, README.vi.md]
+  pull_request:
+    paths: [README.md, README.vi.md]
+jobs:
+  readme:
+    uses: ngoviet/readme-axi/.github/workflows/readme.yml@main

@@ -19,4 +19,12 @@ Cost is an estimate from token counts and a built-in per-model price table (`PRI
 
 `subagentCacheTtl`: `5m` (default) or `1h`. `rowCost`: `on` (default) or `off`.
 
-Install instructions are in the [repository README](../../README.md).
+## Install
+
+Type at the prompt of a Claude Code session in a terminal:
+
+```text
+/plugin install agents-panel --marketplace ngoviet/claude-kit-axi
+```
+
+Answer `y` to add the marketplace, then pick a scope. More in the [repository README](../../README.md).

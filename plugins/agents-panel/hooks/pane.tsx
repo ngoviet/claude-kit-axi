@@ -9,7 +9,7 @@ import { modelName } from './pricing'
 import { ctxOf, elapsed, progressOf, runModel, tick, totals } from './runs'
 import { AGENTS0, PANEL0 } from './state'
 import { isRtl, tr } from './strings'
-import { AGENT_COLOR, AGENT_H, HEADER_H, LINE_H, agentSvg, compactSvg, finishedSvg, gridSvg, gridTiles, headerSvg } from './svg'
+import { AGENT_H, AGENT_TONE, HEADER_H, LINE_H, agentSvg, compactSvg, finishedSvg, gridSvg, gridTiles, headerSvg } from './svg'
 
 const agents = atom({ plugin: 'agents-panel', key: 'agents' } as const, AGENTS0)
 const panel = atom({ plugin: 'agents-panel', key: 'panel' } as const, PANEL0)
@@ -133,11 +133,11 @@ export async function drawPane($: Parameters<PaneHook>[0], e: Parameters<PaneHoo
     return (
       <Box key={a.id} flexDirection="column" marginBottom={1}>
         <Box flexDirection="row" gap={1}>
-          <Text color={AGENT_COLOR}>▣</Text>
+          <Text color={AGENT_TONE}>▣</Text>
           <Text bold wrap="truncate-end">
             {a.description || a.type}
           </Text>
-          <Text color={a.status === 'failed' ? 'red' : a.status === 'done' ? 'green' : AGENT_COLOR}>{STATUS_GLYPH[a.status]}</Text>
+          <Text color={a.status === 'failed' ? 'error' : a.status === 'done' ? 'success' : AGENT_TONE}>{STATUS_GLYPH[a.status]}</Text>
         </Box>
         <Text dimColor wrap="truncate-end">
           {'  '}
@@ -146,7 +146,7 @@ export async function drawPane($: Parameters<PaneHook>[0], e: Parameters<PaneHoo
         </Text>
         <Text wrap="truncate-end">
           {'  '}
-          {progress === null ? <Text dimColor>{textBar(ctx, barW)}</Text> : <Text color={AGENT_COLOR}>{textBar(progress * 100, barW)}</Text>}
+          {progress === null ? <Text dimColor>{textBar(ctx, barW)}</Text> : <Text color={AGENT_TONE}>{textBar(progress * 100, barW)}</Text>}
           <Text dimColor>
             {' '}
             {s.ctx} {ctx}% · {tokens(a.contextTokens)} ≈{usdShort(a.costUsd)} {stopwatch(elapsed(a, at))}
@@ -167,7 +167,7 @@ export async function drawPane($: Parameters<PaneHook>[0], e: Parameters<PaneHoo
       {p.isCompact ? (
         <Text wrap="truncate-end">
           {[...running, ...finished].map(a => (
-            <Text key={a.id} color={AGENT_COLOR}>
+            <Text key={a.id} color={AGENT_TONE}>
               {STATUS_GLYPH[a.status]}{' '}
             </Text>
           ))}

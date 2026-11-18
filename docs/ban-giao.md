@@ -4,7 +4,7 @@
 
 ## Bắt đầu nhanh
 
-1. `git status`: cây làm việc phải sạch, `main` ở `b965df8` hoặc mới hơn. Remote `origin`: `ngoviet/claude-kit-axi` trên GitHub (private, repo độc lập, không phải fork).
+1. `git status`: cây làm việc phải sạch, `main` ở `b965df8` hoặc mới hơn. Remote `origin`: `ngoviet/claude-kit-axi` trên GitHub (public từ 18/11/2026, repo độc lập, không phải fork). Thay đổi đi qua no-mistakes (`no-mistakes axi run --intent ...` trên nhánh tính năng), CI xanh rồi mới merge.
 2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 17/17, agents-panel 22/22, tsc sạch).
 3. Đọc mục "Quy ước khi sửa mã" bên dưới trước khi đụng vào `plugins/`.
 4. Việc kế tiếp nên làm: thử hai mod trong một phiên thật (mục "Việc còn mở").
@@ -108,7 +108,7 @@ Lệnh này lần lượt chạy:
 1. `sync_shared.py --check`.
 2. validate, test và tsc cho từng mod.
 
-CI: Woodpecker tự host (`.woodpecker/ci.yaml`) chạy đúng lệnh này khi có PR và khi push lên `main`; trên CI bước tsc tự bỏ qua vì không có tệp kiểu của engine.
+CI: GitHub Actions (`.github/workflows/ci.yml`, repo public nên miễn phí) chạy đúng lệnh này khi có PR và khi push lên `main`; trên CI bước tsc tự bỏ qua vì không có tệp kiểu của engine. `.github/workflows/readme.yml` kiểm README theo readme-axi. Woodpecker đã tắt khi repo chuyển sang public (theo quy ước, repo public không chạy CI trên máy chủ nhà).
 
 tsc dùng một tsconfig tạm, trỏ tới tệp kiểu của skill `plugin-authoring` bản mới nhất trong `%TEMP%/claude/bundled-skills/` (engine chỉ đặt `.claude-plugin/types/` khi nạp mod). Nếu chưa có tệp đó thì nạp skill `plugin-authoring` một lần.
 
@@ -179,5 +179,5 @@ Lấy từ skill `claude-api`, không đoán:
   - Ngày trong `/spend` có đúng giờ Việt Nam không. Nếu môi trường của mod chạy UTC thì đặt `utcOffset: "7"`.
   - Khung Agents có tự mở khi subagent đầu tiên chạy không, và dòng chi phí F có hiện dưới hàng gọi Agent không.
 - Ý tưởng G (tỉ lệ chi phí subagent / luồng chính trên thanh): chủ chưa chọn, còn trong trang đề xuất.
-- Repo GitHub đang private (agent chọn vì đổi sang public sau vẫn được). Muốn chia sẻ thì theo mục "Sharing a mod" của skill `plugin-authoring`, nhưng phải hỏi chủ trước khi đổi sang public.
+- Repo đã public (chủ yêu cầu 18/11). Người khác cài bằng `/plugin install <mod> --marketplace ngoviet/claude-kit-axi` (marketplace ở `.claude-plugin/marketplace.json`). README theo chuẩn readme-axi: `README.md` (tiếng Anh) và `README.vi.md` cùng mục; sửa một bản thì sửa bản kia, kiểm bằng `python3 readme_axi.py check .` (công cụ ở `D:/code/readme-axi`).
 - Giá fast mode của Fable 5.2 chưa có trong bản skill đang có trên máy.

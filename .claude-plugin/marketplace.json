@@ -1,0 +1,17 @@
+{
+  "name": "claude-kit-axi",
+  "description": "Two Claude Code mods: session-band (a band above the prompt with turn, speed, cost, cache countdown, plan limits and context) and agents-panel (a live panel of subagents with cost).",
+  "owner": {
+    "name": "Ngô Đức Việt"
+  },
+  "plugins": [
+    {
+      "name": "session-band",
+      "source": "./plugins/session-band"
+    },
+    {
+      "name": "agents-panel",
+      "source": "./plugins/agents-panel"
+    }
+  ]
+}

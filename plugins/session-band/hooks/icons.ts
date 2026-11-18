@@ -1,13 +1,20 @@
 // Màu và hình vẽ của thanh. Chuỗi SVG cố định dựng một lần; hình phụ thuộc số được nhớ
 // theo số, nên mỗi lần vẽ lại không dựng chuỗi mới.
 
-export const SPEED = '#8b8cf8'
-export const MONEY = '#4caf6e'
+const SPEED = '#8b8cf8'
+const MONEY = '#4caf6e'
 const MUTED = '#8a8f8c'
 const CONTEXT = '#5fa8d3'
 export const CACHE = '#4fb3a9'
 export const WARN = '#e2a94e'
 export const ALERT = '#e0846b'
+
+/**
+ * Màu cho Text và viền Box: khoá theme của Claude Code, tự đổi theo theme sáng/tối của người
+ * dùng. Hex bên trên chỉ dùng trong SVG (desktop); dùng cho chữ thì trên terminal nền sáng
+ * chỉ đạt 2–2,9:1 (`design-kit check-mod`, 18/11/2026).
+ */
+export const TONE = { speed: 'suggestion', money: 'success', cache: 'planMode', warn: 'warning', alert: 'error' } as const
 
 const ring = (color: string, glyph: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="none" stroke="${color}" stroke-width="2"/>${glyph}</svg>`

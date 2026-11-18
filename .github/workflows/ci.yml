@@ -1,0 +1,23 @@
+# CI cho repo public: GitHub Actions (miễn phí cho repo public). Chạy đúng lệnh kiểm trước khi
+# commit, `bash tools/check.sh`: mã chung đã đồng bộ, rồi `claude plugin validate` và
+# `claude plugin test` cho từng mod. Bước tsc của check.sh tự bỏ qua trên CI, vì tệp kiểu của
+# engine chỉ có trên máy đã nạp skill plugin-authoring. Phiên bản Claude Code ghim theo bản
+# đang cài trên PC1; nâng ở PC1 thì nâng cả ở đây.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm install -g --no-fund --no-audit @anthropic-ai/claude-code@2.1.311
+      - run: claude --version
+      - run: bash tools/check.sh
