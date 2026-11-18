@@ -110,3 +110,25 @@ test('the countdown shows minutes, then mm:ss in the last ten minutes', async ($
   await clock.advance(50 * 60_000)
   expect(await text($, /^09:30$/)).toBeDefined()
 })
+
+// Terminal có `Svg` trong bảng phần tử nhưng vẽ thành hộp rỗng: thanh phải dùng ký hiệu chữ
+// ở terminal và chỉ dùng Svg trên desktop. Tìm ra khi chạy thử design-kit check-mod, 18/11/2026.
+test('icons: text symbols on the terminal, Svg on the desktop', async ($, on) => {
+  await session($, on)
+  await turnStart($)
+  await step($)
+  await complete($)
+  const mount = (surface: 'terminal' | 'desktop') =>
+    $.ui.mount({ plugin: PLUGIN, surface, component: 'AbovePrompt', props: band } as never)
+
+  const term = await mount('terminal')
+  expect(await term.findAll({ type: 'Svg' })).toHaveLength(0)
+  expect(await term.find({ type: 'Text', text: /^⚡$/ })).toBeDefined()
+  expect(await term.find({ type: 'Text', text: /^⧗$/ })).toBeDefined()
+  await term.unmount()
+
+  const desk = await mount('desktop')
+  expect((await desk.findAll({ type: 'Svg' })).length).toBeGreaterThan(0)
+  expect(await desk.find({ type: 'Text', text: /^⚡$/ })).toBeUndefined()
+  await desk.unmount()
+})

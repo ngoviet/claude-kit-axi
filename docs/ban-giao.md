@@ -5,7 +5,7 @@
 ## Bắt đầu nhanh
 
 1. `git status`: cây làm việc phải sạch, `main` ở `b965df8` hoặc mới hơn. Chưa có remote.
-2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 16/16, agents-panel 22/22, tsc sạch).
+2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 17/17, agents-panel 22/22, tsc sạch).
 3. Đọc mục "Quy ước khi sửa mã" bên dưới trước khi đụng vào `plugins/`.
 4. Việc kế tiếp nên làm: thử hai mod trong một phiên thật (mục "Việc còn mở").
 
@@ -52,7 +52,7 @@
 | `notify.ts` | E: thông báo hệ thống. |
 | `band.tsx` | Vẽ thanh. |
 
-- Test: `band.test.tsx` có 5, `features.test.tsx` có 11.
+- Test: `band.test.tsx` có 6, `features.test.tsx` có 11.
 
 ### agents-panel
 
