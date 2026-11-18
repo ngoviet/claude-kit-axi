@@ -1,6 +1,6 @@
 {
   "name": "session-band",
-  "version": "0.3.0-axi.1",
+  "version": "0.3.1-axi.1",
   "description": "Band above the prompt: turn number, output speed, turn and session cost, prompt cache countdown and context fill; notifies before the cache expires. Optimized fork of johnnyvizz/claude-kit (MIT).",
   "author": {
     "name": "johnnyvizz (original); axi fork by ngoviet",
@@ -11,37 +11,53 @@
     "language": {
       "type": "string",
       "title": "Band language",
-      "description": "en (original) or vi",
-      "default": "en",
-      "options": ["en", "vi"]
+      "description": "auto follows Claude Code's language setting, then the system locale; en or vi",
+      "default": "auto",
+      "options": [
+        "auto",
+        "en",
+        "vi"
+      ]
     },
     "cacheTtl": {
       "type": "string",
       "title": "Main-thread prompt cache lifetime",
       "description": "1h: what Claude Code writes on a subscription; 5m: API-key sessions without the 1-hour cache",
       "default": "1h",
-      "options": ["1h", "5m"]
+      "options": [
+        "1h",
+        "5m"
+      ]
     },
     "countdown": {
       "type": "string",
       "title": "Cache countdown",
       "description": "minutes: whole minutes until the last 10 (the band redraws once a minute); seconds: mm:ss all the time, as the original",
       "default": "minutes",
-      "options": ["minutes", "seconds"]
+      "options": [
+        "minutes",
+        "seconds"
+      ]
     },
     "limits": {
       "type": "string",
       "title": "Plan limits on the band",
       "description": "on: 5-hour (and weekly, when wide) usage of the plan with a warning when the pace fills it before the reset; off: hidden",
       "default": "on",
-      "options": ["on", "off"]
+      "options": [
+        "on",
+        "off"
+      ]
     },
     "alerts": {
       "type": "string",
       "title": "Threshold alerts",
       "description": "on: one alert per threshold (context 70/85%, plan limit 80/95%, session budget 75/100%); off: none",
       "default": "on",
-      "options": ["on", "off"]
+      "options": [
+        "on",
+        "off"
+      ]
     },
     "budgetUsd": {
       "type": "string",

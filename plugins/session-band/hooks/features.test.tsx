@@ -198,3 +198,13 @@ test('C: /spend keeps cost per day and project across sessions', { options: { ut
   expect(out).toMatch(/Total: \$4\.25/)
   expect(out).toMatch(/other \$3\.00 · demo \$1\.25/)
 })
+
+// Ngôn ngữ đặt cứng áp ngay lúc register: thanh đúng tiếng cả khi session.start chưa chạy
+// (vd mod vừa nạp lại giữa phiên). Reviewer tìm ra lệch này khi chia module, 18/11/2026.
+test('a fixed language applies before session.start', { options: { language: 'vi' } }, async ($, on) => {
+  mock.clock(on, { now: T0 })
+  on('session.usage', () => ({ value: { startedAt: T0, context: { percent: 10 }, rateLimits: [], cost: { usd: 0 } } }) as never)
+  on('turn.start', () => ({ turnId: 't' }) as never)
+  await turnStart($)
+  expect(await text($, /^Lượt$/)).toBeDefined()
+})

@@ -1,27 +1,9 @@
-export type Phase = 'plan' | 'design' | 'delegate' | 'review' | 'close'
-
-export type PlannedTask = {
-  title: string
-  tier: string
-  after: number[]
-}
-
-export type Flow = {
-  title: string
-  total: number
-  done: number
-  running: number
-  phase: Phase
-  isFinished: boolean
-  tasks: PlannedTask[]
-}
-
 export type AgentStatus = 'running' | 'done' | 'failed'
 
 export type AgentRun = {
   id: string
   agentId?: string
-  /** The Agent tool call that started it: its transcript row. */
+  /** Lệnh gọi công cụ Agent đã tạo ra nó: hàng của nó trong transcript. */
   toolUseId?: string
   type: string
   description: string
@@ -36,10 +18,6 @@ export type AgentRun = {
   costUsd: number
   steps: number
   round: number
-  /** Self-reported by the worker through the `step` tool. */
-  stepDone?: number
-  stepTotal?: number
-  stepNote?: string
 }
 
 export type Panel = {
@@ -50,8 +28,7 @@ export type Panel = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'savvy-progress': {
-      flow: Flow | null
+    'agents-panel': {
       agents: AgentRun[]
       panel: Panel
       now: number

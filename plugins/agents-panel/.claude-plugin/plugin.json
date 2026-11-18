@@ -1,7 +1,7 @@
 {
-  "name": "savvy-progress",
-  "version": "1.3.0-axi.1",
-  "description": "Progress bar above the prompt for /savvy-flow, plus an agents panel (/agents-info): running, finished and planned subagents with model, task progress, context, cost and time. Optimized fork of johnnyvizz/claude-kit (MIT).",
+  "name": "agents-panel",
+  "version": "2.0.0-axi.1",
+  "description": "Agents panel (/agents-info): running and finished subagents with model, context, cost and time, plus a cost line under each Agent call. Optimized fork of johnnyvizz/claude-kit (MIT), without savvy-flow.",
   "author": {
     "name": "johnnyvizz (original); axi fork by ngoviet",
     "url": "https://github.com/johnnyvizz"
@@ -24,11 +24,11 @@
     "autoOpen": {
       "type": "string",
       "title": "Open the agents panel",
-      "description": "savvy: when a savvy-flow worker starts or a plan is reported; any: also when any other subagent starts",
-      "default": "savvy",
+      "description": "any: open the panel when the first subagent of the session starts; off: only with /agents-info",
+      "default": "any",
       "options": [
-        "savvy",
-        "any"
+        "any",
+        "off"
       ]
     },
     "subagentCacheTtl": {

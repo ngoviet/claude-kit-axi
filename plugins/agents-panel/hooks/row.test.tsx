@@ -3,7 +3,7 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-const PLUGIN = 'savvy-progress'
+const PLUGIN = 'agents-panel'
 const T0 = Date.parse('2026-11-17T08:00:00Z')
 const row = (tool: string, id: string) => ({
   plugin: PLUGIN,
@@ -67,4 +67,28 @@ test('rowCost off draws nothing extra', { options: { rowCost: 'off' } }, async (
   const ui = await $.ui.mount(row('Agent', 't1'))
   expect(await ui.find({ type: 'Text', text: /tok/ })).toBeUndefined()
   await ui.unmount()
+})
+
+// Không còn savvy-flow: khung Agents tự mở khi subagent đầu tiên chạy, trừ khi autoOpen: off.
+const opens = async ($: Engine, on: On) => {
+  let n = 0
+  mock.clock(on, { now: T0 })
+  on('ui.open', () => {
+    n++
+    return { value: { isPlaced: true } }
+  })
+  on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
+  const spawn = (id: string) =>
+    $.agent.spawn({ tool_use_id: id, prompt: 'p', description: 'Work', subagentType: 'general-purpose', provider: 'engine', parentModel: 'claude-opus-5-5', background: false, fork: false } as never)
+  await spawn('t1')
+  await spawn('t2')
+  return n
+}
+
+test('the panel opens once when the first subagent starts', async ($, on) => {
+  expect(await opens($, on)).toBe(1)
+})
+
+test('autoOpen off leaves the panel closed', { options: { autoOpen: 'off' } }, async ($, on) => {
+  expect(await opens($, on)).toBe(0)
 })

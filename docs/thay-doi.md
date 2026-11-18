@@ -1,6 +1,6 @@
 # Thay đổi so với bản gốc (claude-kit `c871c153`)
 
-So sánh đầy đủ: `git diff --no-index upstream/<mod> plugins/<mod>`.
+So sánh đầy đủ: `git diff --no-index upstream/session-band plugins/session-band` và `git diff --no-index upstream/savvy-progress plugins/agents-panel`.
 
 ## session-band `0.2.0` → `0.2.0-axi.1`
 
@@ -27,6 +27,41 @@ So sánh đầy đủ: `git diff --no-index upstream/<mod> plugins/<mod>`.
 | C | `/spend [ngày]`: chi phí theo ngày và 5 dự án tốn nhất, qua nhiều phiên | `$.store` khoá `day:YYYY-MM-DD`, ghi khi lượt chính xong và khi phiên kết thúc, giữ 120 ngày. Tuỳ chọn `utcOffset` (mặc định `auto`) | test C |
 | D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×2 |
 | E | Thông báo cache sắp hết trên Windows / mọi hệ | sau notifier macOS: `$.ui.notify` (bỏ qua kênh chỉ kêu chuông) → `PushNotification` → toast | test E + 4 test cũ |
+
+## Đổi tên savvy-progress → agents-panel (18/11/2026)
+
+Bỏ savvy-flow xong, mod chỉ còn khung Agents và dòng chi phí dưới hàng Agent, nên đổi tên cho khớp. Bản gốc vẫn ở `upstream/savvy-progress`: so sánh bằng `git diff --no-index upstream/savvy-progress plugins/agents-panel`.
+
+- Thư mục `plugins/agents-panel`, `name` trong plugin.json, khoá `$.state` (`agents-panel`), mã khung `savvy-agents` → `agents-panel`. Lệnh `/agents-info` giữ nguyên.
+- `tools/sync_shared.py`, `tools/check.sh`, bài đo (`tools/bench/agents-panel.bench.test.tsx`; `run.sh` thay tên plugin và mã khung khi đo bản gốc).
+- PC1: đường dẫn trong `CLAUDE_CODE_PLUGIN_DIRS` và khoá `pluginConfigs` đổi theo (có sao lưu).
+- Các mục bên dưới giữ tên savvy-progress vì đó là tên lúc thay đổi được làm.
+
+## Tái cấu trúc cả repo (18/11/2026): session-band `0.3.1-axi.1`, savvy-progress `2.0.0-axi.1`
+
+Hành vi giữ nguyên, trừ một điểm: `language` của session-band nhận `auto` và lấy làm mặc định, như savvy-progress. Ngôn ngữ đặt cứng vẫn áp ngay lúc `register` như trước; `auto` dò ở `session.start`.
+
+Reviewer độc lập (phiên sạch) đã so bản trước và sau, cùng kịch bản qua `claude plugin test`: session-band 1.004 ảnh chụp cây vẽ, savvy-progress 2.086 ảnh chụp, lệch 0 sau khi trừ phần gỡ savvy-flow. Hàm định dạng so ngẫu nhiên 200.000 mẫu mỗi hàm, lệch 0. Lệch duy nhất tìm được (ngôn ngữ đặt cứng chỉ áp sau `session.start`) đã sửa.
+
+- **Chia module.** Mỗi mod tách `register.tsx` (767 và ~815 dòng) thành các module theo việc; `register.tsx` chỉ còn nối hook (~160 và ~85 dòng).
+  - session-band: `config`, `strings`, `state`, `icons`, `cache`, `limits`, `history`, `measure`, `usage`, `notify`, `band`.
+  - savvy-progress: `config`, `strings`, `state`, `pricing`, `runs`, `crab`, `svg`, `pane`, `row`.
+- **Mã dùng chung** ở `shared/` (`format.ts`: `pad`, `usd`, `usdShort`, `int`, `tokens`, `span`, `stopwatch`; `lang.ts`: `detectLang`). Engine không cho mod import ngoài thư mục của nó, nên `tools/sync_shared.py` chép vào `hooks/lib/` của từng mod; `--check` báo bản lệch.
+- **Đặt tên thống nhất**: tuỳ chọn đọc một lần vào `CFG` ở `config.ts` (`applyOptions`), chữ qua `tr()`, giá trị đầu của `$.state` ở `state.ts`.
+- **Chú thích** viết lại toàn bộ bằng tiếng Việt (tên hàm, biến giữ tiếng Anh).
+- **`tools/check.sh`**: một lệnh kiểm cả repo (đồng bộ mã chung, validate, test, tsc từng mod).
+- **Bài đo savvy-progress** bỏ phần thanh flow; khung 20 agent trên desktop: bản gốc 116.874 ký tự SVG mỗi lần vẽ, bản axi 55.383 (−53%).
+- Kiểm: `bash tools/check.sh` qua hết (session-band 16/16 gồm test ngôn ngữ đặt cứng, savvy-progress 22/22, tsc sạch).
+
+## savvy-progress `1.3.0-axi.1` → `2.0.0-axi.1` (bỏ savvy-flow, 18/11/2026)
+
+Skill savvy-flow không có trong repo và không cài trên PC1, nên mọi phần dành cho nó là mã chết. Đã gỡ:
+
+- Thanh tiến độ phía trên ô nhập (`AbovePrompt`), atom `flow`, kiểu `Flow`/`Phase`/`PlannedTask`.
+- Công cụ `mcp__savvy-progress__progress` và `mcp__savvy-progress__step`, dòng nhắc báo bước chèn vào brief của worker `savvy-*`, các trường `stepDone/stepTotal/stepNote`.
+- Danh sách việc "Kế hoạch" trong khung Agents; trang phục và màu theo hạng `savvy-*` (fable, heavy, careful, medium, light). Còn trang phục Explore và con cua thường.
+- `autoOpen`: mặc định `savvy` → `any`; giá trị mới là `any|off`, `savvy` cũ được coi như `any`.
+- Test: bỏ `band.test.tsx`, `caller.test.ts`, `register.test.ts` (toàn kiểm flow); thêm 2 test tự mở khung. `register.tsx` 1378 → ~815 dòng. Kiểm: validate, tsc sạch, 22/22 test.
 
 ## savvy-progress `1.2.1-axi.1` → `1.3.0-axi.1` (tính năng mới, 17/11/2026)
 

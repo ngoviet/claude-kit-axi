@@ -20,6 +20,10 @@ plugins/session-band/notifier/build.sh
 
 It builds `notifier/Session Band.app` next to the script; on its first notification macOS asks whether to allow notifications from "Session Band". Build it in the folder the mod is loaded from, or copy the built app there. Without the helper (or on another OS) the mod sends Claude Code's notification (`$.ui.notify`: the desktop app or a terminal that shows notifications), then the PushNotification tool, which also reaches your phone over Remote Control but has no title or click-through; when you are already at the session that one is skipped and a toast says it instead.
 
+## Settings
+
+`language`: `auto` (default) follows Claude Code's `language` setting, then the system locale; `en` or `vi` forces one. `cacheTtl` (`1h`|`5m`), `countdown` (`minutes`|`seconds`), `limits`, `alerts`, `budgetUsd`, `utcOffset`: see above and `.claude-plugin/plugin.json`.
+
 ## Commands
 
 - `/token start [label]`, `/token`, `/token stop`: measure a task.

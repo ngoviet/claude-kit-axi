@@ -12,19 +12,19 @@ export type Cache = {
   secondsLeft: number | null
 }
 
-/** One rate-limit window of the plan, as the band draws it. */
+/** Một cửa sổ hạn mức của gói, như thanh vẽ ra. */
 export type Limit = {
   /** `five_hour`, `seven_day`, `spend_limit`. */
   kind: string
-  /** 0..100, rounded to a whole percent. */
+  /** 0..100, làm tròn tới phần trăm nguyên. */
   percent: number
-  /** When the window resets, ms since epoch; null when the engine did not say. */
+  /** Lúc cửa sổ reset, ms tính từ epoch; null khi engine không báo. */
   resetsAt: number | null
-  /** Time until the window fills at the current pace, rounded to 10 minutes; null when it will not fill before the reset. */
+  /** Thời gian tới lúc cửa sổ đầy theo tốc độ hiện tại, làm tròn 10 phút; null khi nó không đầy trước giờ reset. */
   etaMs: number | null
 }
 
-/** A `/token start` measurement in progress. */
+/** Một phép đo `/token start` đang chạy. */
 export type Measure = {
   label: string
   startedAt: number

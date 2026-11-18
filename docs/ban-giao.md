@@ -1,18 +1,21 @@
-# Bàn giao — trạng thái 17/11/2026 (cập nhật sau khi thêm tính năng A–F)
+# Bàn giao — trạng thái 18/11/2026 (sau khi bỏ savvy-flow, tái cấu trúc, đổi tên agents-panel)
 
 Đọc tệp này đầu tiên khi mở phiên mới ở dự án. Chi tiết nghiên cứu: [nghien-cuu.md](nghien-cuu.md); bảng thay đổi và số đo: [thay-doi.md](thay-doi.md).
 
 ## Đang có gì
 
 - `upstream/`: mã gốc nguyên văn của `JohnnyVizz/claude-kit` (commit c871c153, MIT), kèm `SOURCE.txt`. Không sửa; dùng để so sánh và chạy test đối chứng.
-- `plugins/session-band` 0.3.0-axi.1: thanh nằm trên ô nhập, hiện lượt, tok/s, chi phí, đếm ngược cache, hạn mức gói và context.
-  - Tuỳ chọn: `language` (en|vi), `cacheTtl` (1h|5m), `countdown` (minutes|seconds), `limits` (on|off), `alerts` (on|off), `budgetUsd` (số USD, rỗng là không đặt), `utcOffset` (`auto` hoặc số giờ).
+- `plugins/session-band` 0.3.1-axi.1: thanh nằm trên ô nhập, hiện lượt, tok/s, chi phí, đếm ngược cache, hạn mức gói và context.
+  - Tuỳ chọn: `language` (auto|en|vi, mặc định auto), `cacheTtl` (1h|5m), `countdown` (minutes|seconds), `limits` (on|off), `alerts` (on|off), `budgetUsd` (số USD, rỗng là không đặt), `utcOffset` (`auto` hoặc số giờ).
   - Lệnh: `/session_data` (ẩn/hiện, `demo <phút>`, `width`), `/token start [nhãn]` · `/token` · `/token stop`, `/spend [số ngày]`.
-  - Test: 5 test trong `hooks/band.test.tsx` và 10 test trong `hooks/features.test.tsx`.
-- `plugins/savvy-progress` 1.3.0-axi.1: khung Agents (hình cua), tính chi phí subagent, thêm một dòng chi phí dưới mỗi hàng gọi Agent.
-  - Tuỳ chọn: `language`, `autoOpen`, `subagentCacheTtl` (5m|1h), `rowCost` (on|off).
-  - Test: 30 test trong 5 tệp `hooks/*.test.ts(x)`; tính năng F nằm ở `row.test.tsx`.
-- `tools/bench/`: `run.sh` đo trước/sau bằng `claude plugin test`. `tools/cache_split.py` đếm tỉ lệ ghi cache 5m/1h trong transcript.
+  - Test: 5 test trong `hooks/band.test.tsx` và 11 test trong `hooks/features.test.tsx`.
+- `plugins/agents-panel` 2.0.0-axi.1 (trước đây tên `savvy-progress`, đổi tên 18/11; bản gốc ở `upstream/savvy-progress`): khung Agents (hình cua), tính chi phí subagent, thêm một dòng chi phí dưới mỗi hàng gọi Agent. Phần savvy-flow (thanh tiến độ, công cụ `progress`/`step`, việc theo kế hoạch, trang phục theo hạng) đã gỡ ngày 18/11.
+  - Mã khung (pane) là `agents-panel`; lệnh vẫn là `/agents-info`.
+  - Tuỳ chọn: `language`, `autoOpen` (any|off, mặc định any), `subagentCacheTtl` (5m|1h), `rowCost` (on|off).
+  - Test: 22 test trong `hooks/cost.test.ts` và `hooks/row.test.tsx` (tính năng F và tự mở khung).
+- `tools/bench/`: `run.sh` đo trước/sau bằng `claude plugin test` (`upstream/savvy-progress` và `plugins/agents-panel` dùng chung `agents-panel.bench.test.tsx`; `run.sh` tự thay tên plugin và mã khung). `tools/cache_split.py` đếm tỉ lệ ghi cache 5m/1h trong transcript.
+- `shared/`: mã dùng chung (`format.ts`, `lang.ts`). Sửa ở đây rồi chạy `py -3.12 tools/sync_shared.py`; mỗi mod giữ bản chép ở `hooks/lib/` (đầu tệp ghi "TỆP CHÉP TỰ ĐỘNG", đừng sửa ở đó).
+- Mỗi mod chia module trong `hooks/`; đầu `register.tsx` có bảng module nào làm gì. Chú thích toàn bộ bằng tiếng Việt.
 - `.folio/` và `.design-kit/` nằm trong `.gitignore`. `.folio/de-xuat-tinh-nang.html` là trang đề xuất 7 ý tưởng A–G mà chủ đã dùng để chọn tính năng.
 
 ## Tính năng thêm ngày 17/11 (commit c5f0a25)
@@ -26,30 +29,23 @@ Chủ chọn A–F trên trang đề xuất, bỏ G. Bảng chi tiết nằm ở
 | C | session-band | `/spend` đọc `$.store`, khoá `day:YYYY-MM-DD`. Ghi khi lượt chính xong và khi `session.end`; giữ 120 ngày. |
 | D | session-band | Toast một lần mỗi ngưỡng (danh sách đã báo ở atom `fired`). Ngưỡng cao gửi thêm thông báo hệ thống. |
 | E | session-band | Thông báo cache: notifier macOS → `$.ui.notify` → PushNotification → toast. |
-| F | savvy-progress | `ui.render` trên `ToolUse`, nối bằng `AgentRun.toolUseId`. |
+| F | agents-panel | `ui.render` trên `ToolUse`, nối bằng `AgentRun.toolUseId`. |
 
 ## Đã cài trên PC1
 
-- Chỉ session-band. Nạp qua `env.CLAUDE_CODE_PLUGIN_DIRS = "D:/code/claude-kit-axi/plugins/session-band"` trong `~/.claude/settings.json`.
+- Cả hai mod (agents-panel cài thêm 18/11, lúc đó còn tên savvy-progress). Nạp qua `env.CLAUDE_CODE_PLUGIN_DIRS = "D:/code/claude-kit-axi/plugins/session-band;D:/code/claude-kit-axi/plugins/agents-panel"` trong `~/.claude/settings.json` (Windows phân cách bằng `;`).
   - Mod nạp thẳng từ thư mục này: **mọi phiên mở mới chạy ngay bản trong cây làm việc**, kể cả mã chưa commit.
-- Tuỳ chọn ở `pluginConfigs.session-band.options`. Các tuỳ chọn mới (`limits`, `alerts`, `budgetUsd`, `utcOffset`) chưa ghi vào settings, nên đang chạy theo mặc định.
+- Tuỳ chọn ở `pluginConfigs.<tên mod>.options`; agents-panel đặt `language: "vi"`. Các tuỳ chọn mới (`limits`, `alerts`, `budgetUsd`, `utcOffset`) chưa ghi vào settings, nên đang chạy theo mặc định.
 - Sửa mã thì mod tự nạp lại ở phiên mới; kiểm bằng `claude plugin list`.
-- Nạp thêm savvy-progress: nối thêm đường dẫn vào cùng biến, Windows phân cách bằng `;`. Cần chủ đồng ý trước.
-- Gỡ: xoá hai khoá trên (bản sao lưu ở `~/.claude/settings.json.bak-session-band-*`).
+- Gỡ: xoá đường dẫn khỏi biến và khoá tuỳ chọn (bản sao lưu ở `~/.claude/settings.json.bak-session-band-*` và `.bak-savvy-progress-*`, `.bak-agents-panel-*`).
 
 ## Kiểm trước khi commit
 
 ```bash
-claude plugin validate plugins/session-band
-claude plugin test plugins/session-band
-claude plugin validate plugins/savvy-progress
-claude plugin test plugins/savvy-progress
+bash tools/check.sh
 ```
 
-Kiểm kiểu bằng tsc: engine chỉ đặt `.claude-plugin/types/` khi nạp mod (thư mục này bị gitignore), nên phải dựng tsconfig bên ngoài mod.
-- Lấy mẫu tsconfig ở đầu tệp `types/claude-code.d.ts` của skill `plugin-authoring`.
-- `include` gồm tệp `.d.ts` đó, cùng `hooks/` và `types/` của mod.
-- Chạy `npx -p typescript@6.0.3 tsc -p <tsconfig>`. Kết quả 17/11: sạch cả hai mod.
+Một lệnh làm hết: `sync_shared.py --check`, rồi validate, test và tsc cho từng mod. tsc dùng tsconfig tạm trỏ tới tệp kiểu của skill `plugin-authoring` bản mới nhất trong `%TEMP%/claude/bundled-skills/` (engine chỉ đặt `.claude-plugin/types/` khi nạp mod). Chưa có tệp đó thì nạp skill `plugin-authoring` một lần. Kết quả 18/11: qua hết.
 
 ## Sự thật đã kiểm, đừng tìm lại
 
@@ -61,6 +57,10 @@ Kiểm kiểu bằng tsc: engine chỉ đặt `.claude-plugin/types/` khi nạp 
   - `for await` làm mất giá trị trả về này.
   - Muốn vừa xem từng chunk vừa lấy `usage` thì phải gọi `it.next()` thủ công.
 - `claude plugin validate` đòi mọi hàm nhận `$` khai báo ở cấp đầu tệp. Hàm đặt trong `register` bị từ chối, nên tuỳ chọn được đưa vào object `CFG` ở cấp module.
+- Luật engine khi chia module (kiểm 18/11):
+  - Mod **không import được tệp ngoài thư mục của nó** ("outside the plugin's folder"); import trong thư mục (kể cả thư mục con `lib/`) thì được.
+  - Hàm nhận `$` import từ tệp khác phải là **`function` khai báo**; arrow gán vào `const` bị từ chối. Hook truyền sang tệp khác thì bọc: `on('ui.render', {...}, ($, e, next) => drawBand($, e, next))`.
+  - `read`/`update` chỉ nhận atom tạo bằng `atom({ plugin, key }, …)` **ngay trong tệp đó**; atom import từ tệp khác bị từ chối. Mỗi tệp tự khai atom nó dùng (cùng plugin + key là cùng giá trị).
 - `$.ui.notify` trả `isSent: true` cả khi kênh chỉ là `terminal_bell` (chỉ kêu chuông, không hiện chữ). Mod coi trường hợp đó là chưa báo.
 - `$.store` là một tệp JSON riêng của mỗi plugin, giới hạn 4 MiB, còn nguyên qua các phiên.
 - API 2.1.325 thêm trường bắt buộc `isCollapsed` vào props của `AbovePrompt`; các test đã được bổ sung.
@@ -84,7 +84,7 @@ Kiểm kiểu bằng tsc: engine chỉ đặt `.claude-plugin/types/` khi nạp 
   - `rateLimits` có số thật trên gói Max không (thanh hiện "5h …%").
   - `$.ui.notify` có bật thông báo Windows trong desktop app không. Thử bằng `/session_data demo 10`.
   - Ngày trong `/spend` có đúng giờ Việt Nam không. Nếu môi trường mod chạy UTC thì đặt `utcOffset: "7"`.
-- F chỉ chạy khi savvy-progress được cài, mà mod này chưa cài lên máy (cần chủ đồng ý).
+- F chưa thử trong phiên thật (agents-panel mới cài 18/11).
 - Ý tưởng G (tỉ lệ chi phí subagent / luồng chính trên thanh) chủ chưa chọn; còn trong trang đề xuất.
 - Chưa push và chưa có remote. Muốn chia sẻ thì làm theo mục "Sharing a mod" của skill `plugin-authoring`, nhưng phải hỏi chủ public hay private trước.
 - Thời gian JS mỗi lần vẽ chìm trong nhiễu của harness, chưa tách ra đo được. Mới đo được số ký tự SVG (−58%) và số lần vẽ lại (thanh: 3600 → 650 lần mỗi giờ cache).

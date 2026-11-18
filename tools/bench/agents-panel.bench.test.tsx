@@ -1,16 +1,18 @@
-// Đo hiệu năng bảng Agents và thanh tiến độ của savvy-progress (bản gốc và bản axi chạy
-// cùng một bài). Không phải test chức năng: in số ms ra log để so sánh trước/sau.
+// Đo hiệu năng khung Agents của agents-panel (bản axi) và savvy-progress (bản gốc), cùng một bài;
+// tools/bench/run.sh thay PLUGIN và PANE theo bản đang đo.
+// Không phải test chức năng: in số ms ra log để so sánh trước/sau. Thanh tiến độ của
+// savvy-flow đã gỡ khỏi bản axi (2.0.0-axi.1) nên không còn đo; agent dùng loại thường
+// và Explore, là hai loại cả hai bản vẽ giống nhau.
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-const PLUGIN = 'savvy-progress'
-const PROGRESS = 'mcp__savvy-progress__progress'
+const PLUGIN = 'agents-panel'
+const PANE = 'agents-panel'
 const AGENTS = 20
 const TICKS = 300
 const pane = { title: '', isFocused: false, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 60 }, view: {} } as const
-const band = { hasSurvey: false, isWorking: true, maxRows: 4, bodyColumns: 160, scroll: { offset: 0, bodyRows: 4 }, view: {} }
-const TIERS = ['savvy-heavy', 'savvy-careful', 'savvy-medium', 'savvy-light', 'Explore']
+const TYPES = ['general-purpose', 'Explore']
 const nowMs = () => (globalThis as { performance?: { now(): number } }).performance?.now() ?? Date.now()
 
 async function crew($: Engine, on: On) {
@@ -28,10 +30,8 @@ async function crew($: Engine, on: On) {
     return { turnId: 't', index: 0, answer: '', toolUses: [], stopReason: 'end_turn', usage } as never
   })
   await $.session.start({ source: 'startup', cwd: '/repo', surface: 'desktop', isInteractive: true } as never)
-  const tasks = Array.from({ length: AGENTS + 5 }, (_, i) => ({ title: `Task ${i + 1}`, tier: 'medium' }))
-  await $.tool.call({ tool: PROGRESS, title: 'Bench flow', phase: 'delegate', tasks } as never)
   for (let i = 0; i < AGENTS; i++) {
-    await $.agent.spawn({ tool_use_id: `t${i}`, prompt: 'p', description: `Task ${i + 1}`, subagentType: TIERS[i % TIERS.length], provider: 'engine', parentModel: 'claude-opus-5-5', background: true, fork: false } as never)
+    await $.agent.spawn({ tool_use_id: `t${i}`, prompt: 'p', description: `Task ${i + 1}`, subagentType: TYPES[i % TYPES.length], provider: 'engine', parentModel: 'claude-opus-5-5', background: true, fork: false } as never)
     const stream = ($.turn.step as (e: unknown) => AsyncIterable<unknown>)({ turnId: 't', index: 0, model: 'claude-opus-5-5', messageCount: 1, agentId: `a${i + 1}` })
     for await (const _ of stream) void _
   }
@@ -50,24 +50,12 @@ for (const surface of ['desktop', 'terminal'] as const) {
     const t0 = nowMs()
     for (let i = 0; i < TICKS; i++) {
       await clock.advance(1000)
-      const ui = await $.ui.mount({ plugin: PLUGIN, surface, component: 'Pane', requestId: 'savvy-agents', props: pane })
+      const ui = await $.ui.mount({ plugin: PLUGIN, surface, component: 'Pane', requestId: PANE, props: pane })
       if (i === 0) svgChars = (await ui.findAll({ type: 'Svg' })).reduce((s, el) => s + String(el.props.source).length, 0)
       await ui.unmount()
     }
     const ms = nowMs() - t0
-    console.log(`BENCH savvy-progress pane ${surface}: ${(ms / TICKS).toFixed(2)} ms/redraw; SVG ${svgChars} chars per redraw`)
+    console.log(`BENCH ${PLUGIN} pane ${surface}: ${(ms / TICKS).toFixed(2)} ms/redraw; SVG ${svgChars} chars per redraw`)
     expect(ms).toBeGreaterThan(0)
   })
 }
-
-test(`bench: ${TICKS} redraws of the band while a worker reports usage`, async ($, on) => {
-  await crew($, on)
-  const t0 = nowMs()
-  for (let i = 0; i < TICKS; i++) {
-    const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'desktop', component: 'AbovePrompt', props: band })
-    await ui.unmount()
-  }
-  const ms = nowMs() - t0
-  console.log(`BENCH savvy-progress band: ${(ms / TICKS).toFixed(2)} ms/redraw`)
-  expect(ms).toBeGreaterThan(0)
-})

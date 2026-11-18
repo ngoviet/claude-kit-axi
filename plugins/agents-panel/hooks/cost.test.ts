@@ -2,13 +2,13 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-const PLUGIN = 'savvy-progress'
+const PLUGIN = 'agents-panel'
 const pane = { title: '', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} } as const
 
 type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }
 
-// One worker on `model`, known to the panel before any usage arrives; `request` is
-// what each of its model requests reports.
+// Một worker chạy `model`, có mặt trong khung trước khi có usage nào; `request` là
+// usage mà mỗi request model của nó báo.
 const worker = async ($: Engine, on: On, model: string, request?: Usage) => {
   mock.clock(on)
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -20,20 +20,20 @@ const worker = async ($: Engine, on: On, model: string, request?: Usage) => {
   await $.agent.spawn({ tool_use_id: 't1', prompt: 'p', description: 'Priced work', subagentType: 'general-purpose', provider: 'engine', parentModel: model, background: false, fork: false } as never)
 }
 
-// One model request of the worker, as `turn.step` reports it.
+// Một request model của worker, như `turn.step` báo.
 const step = async ($: Engine, model: string) => {
   const stream = ($.turn.step as (e: unknown) => AsyncIterable<unknown>)({ turnId: 'turn', index: 0, model, messageCount: 1, agentId: 'a1' })
   for await (const _ of stream) void _
 }
 
 const shows = async ($: Engine, text: RegExp) => {
-  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: 'savvy-agents', props: pane })
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: 'agents-panel', props: pane })
   return ui.find({ type: 'Text', text })
 }
 
-// List prices in USD per million tokens (skill claude-api, 17/11/2026), cache writes at
-// the 5-minute rate (1.25 × input), which is what subagents write: a turn of 1M input,
-// 1M output, 2M cache read and 1M cache write costs input + output + 2 × read + 1.25 × input.
+// Giá niêm yết USD mỗi triệu token (skill claude-api, 17/11/2026), ghi cache theo giá loại
+// 5 phút (1,25 × input), loại subagent ghi: một lượt 1M input, 1M output, 2M đọc cache và
+// 1M ghi cache tốn input + output + 2 × đọc + 1,25 × input.
 const TURN: Usage = { input_tokens: 1e6, output_tokens: 1e6, cache_read_input_tokens: 2e6, cache_creation_input_tokens: 1e6 }
 const PRICED: readonly (readonly [model: string, shown: string])[] = [
   ['claude-fable-5-2', '$58.4'], // 8 + 40 + 2 × 0.20 + 10 (bản gốc: giá Fable 5 → $82.0)
@@ -66,7 +66,7 @@ test('cost: subagentCacheTtl 1h prices cache writes at 2x input, as the original
   expect(await shows($, /≈\$32\.4 /)).toBeDefined() // 4 + 20 + 0.4 + 8
 })
 
-// Haiku 5.5 is priced by prompt length, per request: 120K of prompt is over the 100K line.
+// Haiku 5.5 tính giá theo độ dài prompt của từng request: prompt 120K vượt mốc 100K.
 const LONG: Usage = { input_tokens: 20_000, output_tokens: 10_000, cache_read_input_tokens: 50_000, cache_creation_input_tokens: 50_000 }
 
 test('cost: a Haiku 5.5 request over 100K prompt tokens pays the long-prompt prices', async ($, on) => {
@@ -83,7 +83,7 @@ test('cost: Haiku 4.5 has one price whatever the prompt length', async ($, on) =
   expect(await shows($, /≈\$0\.14 /)).toBeDefined()
 })
 
-// The context bar: 130K tokens are 13% of Haiku 5.5's 1M window and 65% of Haiku 4.5's 200K.
+// Thanh context: 130K token là 13% cửa sổ 1M của Haiku 5.5 và 65% cửa sổ 200K của Haiku 4.5.
 for (const [model, percent] of [['claude-haiku-5-5', 13], ['claude-haiku-4-5', 65]] as const) {
   test(`context: ${model} fills to ${percent}% at 130K tokens`, async ($, on) => {
     await worker($, on, model, LONG)
