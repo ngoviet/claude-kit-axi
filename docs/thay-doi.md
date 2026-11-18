@@ -28,6 +28,13 @@ So sánh đầy đủ: `git diff --no-index upstream/session-band plugins/sessio
 | D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×2 |
 | E | Thông báo cache sắp hết trên Windows / mọi hệ | sau notifier macOS: `$.ui.notify` (bỏ qua kênh chỉ kêu chuông) → `PushNotification` → toast | test E + 4 test cũ |
 
+## Repo public, README chuẩn readme-axi, cài từ marketplace (18/11/2026)
+
+- Repo `ngoviet/claude-kit-axi` chuyển từ private sang public (repo độc lập, không phải fork).
+- README viết lại theo chuẩn readme-axi (loại `tool`): `README.md` tiếng Anh và `README.vi.md` tiếng Việt cùng 11 mục, khối Ủng hộ dùng chung; `readme_axi.py check --strict` đạt.
+- `.claude-plugin/marketplace.json` ở gốc repo liệt kê hai mod, nên cài được bằng một dòng: `/plugin install session-band --marketplace ngoviet/claude-kit-axi` (README của từng mod có dòng cài).
+- CI chuyển từ Woodpecker sang GitHub Actions (`.github/workflows/ci.yml` chạy `tools/check.sh`, `readme.yml` kiểm README); bỏ `.woodpecker/` và tắt Woodpecker cho repo này, theo quy ước repo public không chạy CI trên máy chủ nhà.
+
 ## Màu theo theme và chữ 12px (18/11/2026, sau `design-kit check-mod`)
 
 Lệnh `design-kit check-mod` (design-kit 0.3.0) dựng lại cây vẽ của mod trên terminal và desktop rồi đo như cổng web.

@@ -31,4 +31,12 @@ It builds `notifier/Session Band.app` next to the script; on its first notificat
 - `/session_data`: show or hide the band.
 - `/session_data demo <minutes>`: pretend the cache has that many minutes left, to preview the colors and the warning; the next answer resets it.
 
-Install instructions are in the [repository README](../../README.md).
+## Install
+
+Type at the prompt of a Claude Code session in a terminal:
+
+```text
+/plugin install session-band --marketplace ngoviet/claude-kit-axi
+```
+
+Answer `y` to add the marketplace, then pick a scope. More in the [repository README](../../README.md).
