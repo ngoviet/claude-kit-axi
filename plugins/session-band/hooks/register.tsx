@@ -44,7 +44,11 @@ const ALERT = '#e0846b'
 
 const dur = (ms: number): string => {
   const m = Math.max(0, Math.round(ms / 60_000))
-  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}`
+  if (m < 60) return `${m}m`
+  if (m < 24 * 60) return `${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}`
+  // Từ 1 ngày trở lên: ngày + giờ (làm tròn giờ), vd "1d9h", phút không còn ý nghĩa.
+  const h = Math.round(m / 60)
+  return `${Math.floor(h / 24)}d${h % 24 ? `${h % 24}h` : ''}`
 }
 
 const STRINGS = {
@@ -218,6 +222,11 @@ const cacheText = (left: number, perSecond: boolean, expired: string): string =>
 
 const LIMIT_LABEL: Record<string, string> = { five_hour: '5h', seven_day: '7d', spend_limit: '$' }
 
+// Cửa sổ dài thì dự báo theo tốc độ trung bình từ lúc cửa sổ mở (giờ reset − độ dài), không
+// theo vài phút gần nhất: một đợt chạy dồn không bị nhân lên thành cả tuần, và đêm/lúc nghỉ
+// được tính vào. Cửa sổ 5 giờ vẫn dùng tốc độ ngắn hạn vì trong vài giờ người ta làm liên tục.
+const WINDOW_AVG_MS: Record<string, number> = { seven_day: 7 * 24 * 3_600_000 }
+
 // Mốc đầu tiên thấy được của mỗi cửa sổ (theo giờ reset): tốc độ đốt = phần trăm tăng
 // thêm chia thời gian đã trôi. Biến module: mất khi reload thì chỉ đo lại từ đầu.
 const firstSeen = new Map<string, { resetsAt: number | null; percent: number; at: number }>()
@@ -232,8 +241,11 @@ const readLimits = (raw: readonly { kind: string; percentUsed: number; resetsAt?
     }
     const b = firstSeen.get(r.kind)!
     let etaMs: number | null = null
-    const span = now - b.at
-    const gained = r.percentUsed - b.percent
+    const length = WINDOW_AVG_MS[r.kind]
+    const opened = length !== undefined && resetsAt !== null ? resetsAt - length : null
+    // Cửa sổ dài: tính từ lúc mở cửa sổ với 0%; còn lại: từ mốc đầu tiên mod thấy.
+    const span = opened !== null && opened <= now ? now - opened : now - b.at
+    const gained = opened !== null && opened <= now ? r.percentUsed : r.percentUsed - b.percent
     if (span >= ETA_MIN_SAMPLE_MS && gained > 0 && r.percentUsed < 100) {
       const eta = ((100 - r.percentUsed) / gained) * span
       const untilReset = resetsAt === null ? Infinity : resetsAt - now

@@ -8,7 +8,7 @@
 - `plugins/session-band` 0.3.0-axi.1: thanh nằm trên ô nhập, hiện lượt, tok/s, chi phí, đếm ngược cache, hạn mức gói và context.
   - Tuỳ chọn: `language` (en|vi), `cacheTtl` (1h|5m), `countdown` (minutes|seconds), `limits` (on|off), `alerts` (on|off), `budgetUsd` (số USD, rỗng là không đặt), `utcOffset` (`auto` hoặc số giờ).
   - Lệnh: `/session_data` (ẩn/hiện, `demo <phút>`, `width`), `/token start [nhãn]` · `/token` · `/token stop`, `/spend [số ngày]`.
-  - Test: 5 test trong `hooks/band.test.tsx` và 8 test trong `hooks/features.test.tsx`.
+  - Test: 5 test trong `hooks/band.test.tsx` và 10 test trong `hooks/features.test.tsx`.
 - `plugins/savvy-progress` 1.3.0-axi.1: khung Agents (hình cua), tính chi phí subagent, thêm một dòng chi phí dưới mỗi hàng gọi Agent.
   - Tuỳ chọn: `language`, `autoOpen`, `subagentCacheTtl` (5m|1h), `rowCost` (on|off).
   - Test: 30 test trong 5 tệp `hooks/*.test.ts(x)`; tính năng F nằm ở `row.test.tsx`.
@@ -21,7 +21,7 @@ Chủ chọn A–F trên trang đề xuất, bỏ G. Bảng chi tiết nằm ở
 
 | ID | Ở đâu | Tóm tắt |
 | --- | --- | --- |
-| A | session-band | Hạn mức 5h/7d lấy từ `$.session.usage().rateLimits`. Có "⚠2h20" khi tốc độ đốt hiện tại sẽ làm đầy cửa sổ trước giờ reset. |
+| A | session-band | Hạn mức 5h/7d lấy từ `$.session.usage().rateLimits`. Có "⚠2h20" khi tốc độ đốt sẽ làm đầy cửa sổ trước giờ reset; cửa sổ 7d tính theo tốc độ trung bình từ lúc cửa sổ mở, thời gian dài viết "1d9h". |
 | B | session-band | `/token` cộng `usage` của mọi `turn.step`, kể cả subagent. USD là chênh lệch `cost.usd` của phiên. |
 | C | session-band | `/spend` đọc `$.store`, khoá `day:YYYY-MM-DD`. Ghi khi lượt chính xong và khi `session.end`; giữ 120 ngày. |
 | D | session-band | Toast một lần mỗi ngưỡng (danh sách đã báo ở atom `fired`). Ngưỡng cao gửi thêm thông báo hệ thống. |

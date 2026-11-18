@@ -96,6 +96,28 @@ test('A: no fill warning when the window resets first', async ($, on) => {
   expect(await text($, /^⚠/)).toBeUndefined()
 })
 
+test('A: the weekly window uses the average pace since it opened, so a burst does not alarm', async ($, on) => {
+  const { clock, w } = await session($, on)
+  // Cửa sổ tuần mở 3 ngày trước (reset sau 4 ngày).
+  const resetsAt = new Date(T0 + 4 * 24 * H).toISOString()
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 16, resetsAt }]
+  await turn($)
+  // +10% trong 30 phút: tốc độ ngắn hạn sẽ báo đầy sau ~3h40, trung bình cả tuần thì không.
+  await clock.advance(30 * 60_000)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 26, resetsAt }]
+  await turn($)
+  expect(await text($, /^26%$/)).toBeDefined()
+  expect(await text($, /^⚠/)).toBeUndefined()
+})
+
+test('A: a weekly fill warning reads in days and hours', async ($, on) => {
+  const { w } = await session($, on)
+  // Mở 2 ngày trước, đã 60%: 30%/ngày, còn 40% → 32 giờ, trước giờ reset (còn 5 ngày).
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 60, resetsAt: new Date(T0 + 5 * 24 * H).toISOString() }]
+  await turn($)
+  expect(await text($, /^⚠1d8h$/)).toBeDefined()
+})
+
 test('A: limits off hides them', { options: { limits: 'off' } }, async ($, on) => {
   const { w } = await session($, on)
   w.rateLimits = [{ kind: 'five_hour', percentUsed: 42 }]
