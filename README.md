@@ -145,7 +145,10 @@ bash tools/check.sh
 ```
 
 runs before every commit and in CI: shared code in sync, then `claude plugin validate`, `claude plugin test` and
-`tsc` for each mod (tsc is skipped where Claude Code's type files are not on disk). Edit shared code in `shared/`,
+`tsc` for each mod (tsc is skipped where Claude Code's type files are not on disk). A second CI job checks the UI of
+both mods with [`design-kit check-mod --strict`](https://github.com/ngoviet/design-kit) (overflow, cut text, contrast
+on dark and light, text size, engine limits, on the terminal and desktop at 40–200 columns); its screenshots are the
+`check-mod-shots` artifact of the run. Edit shared code in `shared/`,
 then `python3 tools/sync_shared.py`. Compare with the original: `bash tools/bench/run.sh upstream/savvy-progress`
 and `bash tools/bench/run.sh plugins/agents-panel`. Code comments and docs are in Vietnamese.
 
