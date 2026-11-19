@@ -177,7 +177,8 @@ Lấy từ skill `claude-api`, không đoán:
   - Thanh có hiện `5h …%` / `7d …%` với số thật của gói Max không. Nếu engine không trả `resetsAt` thì dự báo cửa sổ 7d quay về tốc độ ngắn hạn.
   - `/session_data demo 10` có bật thông báo Windows trong desktop app không.
   - Ngày trong `/spend` có đúng giờ Việt Nam không. Nếu môi trường của mod chạy UTC thì đặt `utcOffset: "7"`.
-  - Khung Agents có tự mở khi subagent đầu tiên chạy không, và dòng chi phí F có hiện dưới hàng gọi Agent không.
+  - ~~Khung Agents có tự mở khi subagent đầu tiên chạy không, và dòng chi phí F có hiện dưới hàng gọi Agent không~~: **đã thử 19/11/2026**, desktop app trên PC1, subagent haiku nhỏ → khung tự mở và dòng F hiện dưới hàng gọi Agent, chủ xác nhận cả hai.
+  - Khung và dòng F chỉ vẽ trên máy chạy Claude Code (terminal hoặc desktop app trên PC1). Xem phiên từ điện thoại hoặc web thì không thấy: đó không phải lỗi.
 - Ý tưởng G (tỉ lệ chi phí subagent / luồng chính trên thanh): chủ chưa chọn, còn trong trang đề xuất.
 - Repo đã public (chủ yêu cầu 18/11). Người khác cài bằng `/plugin install <mod> --marketplace ngoviet/claude-kit-axi` (marketplace ở `.claude-plugin/marketplace.json`). README theo chuẩn readme-axi: `README.md` (tiếng Anh) và `README.vi.md` cùng mục; sửa một bản thì sửa bản kia, kiểm bằng `python3 readme_axi.py check .` (công cụ ở `D:/code/readme-axi`).
 - Giá fast mode của Fable 5.2 chưa có trong bản skill đang có trên máy.
