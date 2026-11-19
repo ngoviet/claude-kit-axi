@@ -86,7 +86,8 @@ const STRINGS = {
     opened: 'Đã mở bảng agent.',
     closed: 'Đã đóng bảng agent.',
     ctx: 'ctx',
-    effort: { low: 'thấp', medium: 'vừa', high: 'cao', xhigh: 'rất cao', max: 'tối đa' },
+    // Theo bản Việt của Claude Code: Thấp · Trung bình · Cao · Cao hơn · Tối đa (viết thường vì đứng giữa dòng).
+    effort: { low: 'thấp', medium: 'trung bình', high: 'cao', xhigh: 'cao hơn', max: 'tối đa' },
   },
 } as const
 
