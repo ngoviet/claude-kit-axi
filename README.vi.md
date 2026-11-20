@@ -116,9 +116,9 @@ Thanh hiện sau câu trả lời đầu tiên của phiên; khung Agents mở k
 
 Cả hai là mod của Claude Code: một module hook do Claude Code chạy, vẽ bằng `ui.render` lên thanh trên ô nhập
 (`AbovePrompt`), lên một pane và lên hàng của từng lệnh gọi công cụ (`ToolUse`). session-band đọc sổ chi phí,
-context và hạn mức của chính phiên, và đo thời gian mỗi câu trả lời từ phần tử stream đầu tiên. agents-panel theo
-mỗi subagent từ `agent.spawn` qua từng `turn.step` tới `turn.complete`, rồi tính giá số token nó báo theo bảng trong
-`plugins/agents-panel/hooks/pricing.ts`. `hooks/register.tsx` của mỗi mod chỉ nối các hook; mỗi phần có module
+context và hạn mức của chính phiên (số hạn mức mới nhất dùng chung giữa các phiên qua store của mod), và đo
+thời gian mỗi câu trả lời từ phần tử stream đầu tiên. agents-panel theo mỗi subagent từ `agent.spawn` qua từng
+`turn.step` tới `turn.complete`, rồi tính giá số token nó báo theo bảng trong `plugins/agents-panel/hooks/pricing.ts`. `hooks/register.tsx` của mỗi mod chỉ nối các hook; mỗi phần có module
 riêng, liệt kê ở đầu tệp đó.
 
 Những gì đã đổi so với bản gốc, kèm số đo trước và sau: [docs/thay-doi.md](docs/thay-doi.md).
