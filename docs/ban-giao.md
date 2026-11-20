@@ -5,7 +5,7 @@
 ## Bắt đầu nhanh
 
 1. `git status`: cây làm việc phải sạch, `main` ở `b965df8` hoặc mới hơn. Remote `origin`: `ngoviet/claude-kit-axi` trên GitHub (public từ 18/11/2026, repo độc lập, không phải fork). Thay đổi đi qua no-mistakes (`no-mistakes axi run --intent ...` trên nhánh tính năng), CI xanh rồi mới merge.
-2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 17/17, agents-panel 22/22, tsc sạch).
+2. `bash tools/check.sh`: phải in "mọi bước qua" (session-band 19/19, agents-panel 22/22, tsc sạch).
 3. Đọc mục "Quy ước khi sửa mã" bên dưới trước khi đụng vào `plugins/`.
 4. Việc kế tiếp nên làm: thử hai mod trong một phiên thật (mục "Việc còn mở").
 
@@ -52,7 +52,7 @@
 | `notify.ts` | E: thông báo hệ thống. |
 | `band.tsx` | Vẽ thanh. |
 
-- Test: `band.test.tsx` có 6, `features.test.tsx` có 11.
+- Test: `band.test.tsx` có 6, `features.test.tsx` có 13.
 
 ### agents-panel
 
@@ -174,7 +174,7 @@ Lấy từ skill `claude-api`, không đoán:
 ## Việc còn mở
 
 - **Chưa thử trong phiên thật.** Mở một phiên mới trên PC1 (hai mod tự nạp) và xem:
-  - Thanh có hiện `5h …%` / `7d …%` với số thật của gói Max không. Nếu engine không trả `resetsAt` thì dự báo cửa sổ 7d quay về tốc độ ngắn hạn.
+  - ~~Thanh có hiện `5h …%` / `7d …%` với số thật của gói Max không~~: **đã thử 21/11/2026**. Thanh hiện 7d 47%, máy chủ trả 49% (`claude -p --output-format stream-json --verbose`, sự kiện `rate_limit_event`), app ghi 50%. Nguyên nhân: engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên, phiên nghỉ giữ số cũ. Đã sửa: `usage.ts` lưu số lớn nhất mỗi cửa sổ (theo giờ reset) vào `$.store` dùng chung giữa phiên. Phần lệch còn lại khoảng 1% là do header chỉ có 2 chữ số thập phân (0.49), app làm tròn từ số mịn hơn. Phiên đang nghỉ vẫn chỉ đổi số ở lượt kế của nó.
   - `/session_data demo 10` có bật thông báo Windows trong desktop app không.
   - Ngày trong `/spend` có đúng giờ Việt Nam không. Nếu môi trường của mod chạy UTC thì đặt `utcOffset: "7"`.
   - ~~Khung Agents có tự mở khi subagent đầu tiên chạy không, và dòng chi phí F có hiện dưới hàng gọi Agent không~~: **đã thử 19/11/2026**, desktop app trên PC1, subagent haiku nhỏ → khung tự mở và dòng F hiện dưới hàng gọi Agent, chủ xác nhận cả hai.

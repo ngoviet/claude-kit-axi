@@ -13,6 +13,36 @@ const fired = atom({ plugin: 'session-band', key: 'fired' } as const, FIRED0)
 const limits = atom({ plugin: 'session-band', key: 'limits' } as const, LIMITS0)
 const stats = atom({ plugin: 'session-band', key: 'stats' } as const, STATS0)
 
+type RawLimit = { kind: string; percentUsed: number; resetsAt?: string }
+
+/**
+ * Engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên, nên phiên đang nghỉ giữ số
+ * cũ trong khi phiên khác vẫn tiêu hạn mức (đo 21/11/2026: thanh 47%, máy chủ 49%). Trong
+ * cùng một cửa sổ (cùng giờ reset) phần trăm chỉ tăng, nên số lớn nhất mọi phiên từng thấy
+ * là số mới nhất: lưu nó vào `$.store` (sống qua các phiên) và hiện số lớn hơn. Cửa sổ mới
+ * có giờ reset khác nên số cũ tự bị bỏ qua.
+ */
+async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promise<RawLimit[]> {
+  const out: RawLimit[] = []
+  for (const r of raw) {
+    if (!r.resetsAt) {
+      out.push(r)
+      continue
+    }
+    const key = `lim:${r.kind}`
+    const seen = (await $.store.get(key).catch(() => undefined)) as RawLimit | undefined
+    if (seen?.resetsAt === r.resetsAt && seen.percentUsed > r.percentUsed) {
+      out.push({ ...r, percentUsed: seen.percentUsed })
+      continue
+    }
+    if (seen?.resetsAt !== r.resetsAt || seen.percentUsed !== r.percentUsed) {
+      await $.store.set(key, { resetsAt: r.resetsAt, percentUsed: r.percentUsed }).catch(() => undefined)
+    }
+    out.push(r)
+  }
+  return out
+}
+
 /**
  * Đọc lại số liệu phiên, ghi state chỉ khi có thay đổi (mỗi lần ghi là một lần vẽ lại mọi
  * chỗ đọc giá trị đó). Trả về phần chi phí tăng thêm từ lần trước, cho lịch sử.
@@ -23,7 +53,7 @@ export async function refresh($: EngineInterface): Promise<number> {
   const s = await read($, stats)
   const ctx = context.percent ?? s.context
 
-  const next = readLimits(rateLimits, await $.clock.now())
+  const next = readLimits(await newestLimits($, rateLimits), await $.clock.now())
   if (!sameLimits(next, await read($, limits))) await update($, limits, () => next)
 
   const gained = Math.max(0, total - s.total)

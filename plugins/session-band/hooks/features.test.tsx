@@ -118,6 +118,34 @@ test('A: a weekly fill warning reads in days and hours', async ($, on) => {
   expect(await text($, /^⚠1d8h$/)).toBeDefined()
 })
 
+test('A: an idle session shows the newest reading another session saw in the same window', async ($, on) => {
+  // Engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên: phiên này còn 47% trong
+  // khi phiên khác đã thấy 49% (đo thật 21/11/2026: thanh 47%, máy chủ 49%).
+  const resetsAt = new Date(T0 + 4 * 24 * H).toISOString()
+  const { w } = await session($, on, { 'lim:seven_day': { resetsAt, percentUsed: 49 } })
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 47, resetsAt }]
+  await turn($)
+  expect(await text($, /^49%$/)).toBeDefined()
+  expect(await text($, /^47%$/)).toBeUndefined()
+})
+
+test('A: a newer reading is shared, and a new window ignores the old one', async ($, on) => {
+  const store = { 'lim:five_hour': { resetsAt: new Date(T0 - H).toISOString(), percentUsed: 90 } }
+  const resetsAt = new Date(T0 + 4 * 24 * H).toISOString()
+  const { w } = await session($, on, store)
+  w.rateLimits = [
+    { kind: 'five_hour', percentUsed: 5, resetsAt: new Date(T0 + 4 * H).toISOString() },
+    { kind: 'seven_day', percentUsed: 52, resetsAt },
+  ]
+  await turn($)
+  expect(await text($, /^5%$/)).toBeDefined()
+  expect(await text($, /^90%$/)).toBeUndefined()
+  // Số 52% đã được lưu: một lượt sau engine còn số cũ hơn (50%) thì thanh vẫn giữ 52%.
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 50, resetsAt }]
+  await turn($)
+  expect(await text($, /^52%$/)).toBeDefined()
+})
+
 test('A: limits off hides them', { options: { limits: 'off' } }, async ($, on) => {
   const { w } = await session($, on)
   w.rateLimits = [{ kind: 'five_hour', percentUsed: 42 }]

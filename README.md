@@ -118,9 +118,9 @@ Set them in `/config`, or under `pluginConfigs` in `~/.claude/settings.json`:
 
 Both are Claude Code mods: a hooks module that Claude Code runs, drawing with `ui.render` on the band above the
 prompt (`AbovePrompt`), a pane and each tool call's row (`ToolUse`). session-band reads the session's own cost
-ledger, context and rate limits, and times each answer from its first streamed item. agents-panel follows each
-subagent from `agent.spawn` through every `turn.step` to `turn.complete`, and prices the tokens it reports with
-the table in `plugins/agents-panel/hooks/pricing.ts`. Each mod's `hooks/register.tsx` only wires the hooks; every
+ledger, context and rate limits (sharing the newest rate-limit reading across sessions through its store), and
+times each answer from its first streamed item. agents-panel follows each subagent from `agent.spawn` through
+every `turn.step` to `turn.complete`, and prices the tokens it reports with the table in `plugins/agents-panel/hooks/pricing.ts`. Each mod's `hooks/register.tsx` only wires the hooks; every
 part has its own module, listed at the top of that file.
 
 What changed from the original, with before and after measurements: [docs/thay-doi.md](docs/thay-doi.md)
