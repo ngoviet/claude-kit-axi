@@ -20,7 +20,7 @@ const WINDOW_AVG_MS: Record<string, number> = { seven_day: 7 * 24 * 3_600_000 }
  */
 const firstSeen = new Map<string, { resetsAt: number | null; percent: number; at: number }>()
 
-type RawLimit = { kind: string; percentUsed: number; resetsAt?: string }
+export type RawLimit = { kind: string; percentUsed: number; resetsAt?: string }
 
 /** Đổi `rateLimits` của engine thành dữ liệu thanh vẽ, kèm dự báo chạm trần. */
 export const readLimits = (raw: readonly RawLimit[], now: number): Limit[] =>
