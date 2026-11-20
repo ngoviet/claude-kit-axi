@@ -5,6 +5,7 @@ import type { EngineInterface } from 'claude-code'
 import { BUDGET_STEPS, CFG, CONTEXT_REARM, CONTEXT_STEPS, LIMIT_STEPS } from './config'
 import { span, usd } from './lib/format'
 import { readLimits, sameLimits } from './limits'
+import type { RawLimit } from './limits'
 import { notifyOs, projectOf } from './notify'
 import { FIRED0, LIMITS0, STATS0 } from './state'
 import { tr } from './strings'
@@ -12,8 +13,6 @@ import { tr } from './strings'
 const fired = atom({ plugin: 'session-band', key: 'fired' } as const, FIRED0)
 const limits = atom({ plugin: 'session-band', key: 'limits' } as const, LIMITS0)
 const stats = atom({ plugin: 'session-band', key: 'stats' } as const, STATS0)
-
-type RawLimit = { kind: string; percentUsed: number; resetsAt?: string }
 
 /**
  * Engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên, nên phiên đang nghỉ giữ số
