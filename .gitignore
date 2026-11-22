@@ -4,3 +4,5 @@ node_modules/
 *.app/
 .folio/
 .design-kit/
+# Engine tự tạo khi nạp mod, trỏ vào .claude-plugin/types/ (cũng bị bỏ qua)
+plugins/*/tsconfig.json
