@@ -8,10 +8,12 @@
 //   isHidden  đã đóng bằng × (ẩn tới hết phiên)        isBusy   đang có lượt chạy
 //   warned    mốc phút nhỏ nhất đã báo, 0 là chưa      limits   A: cửa sổ hạn mức
 //   fired     D: khoá ngưỡng đã báo (không ai vẽ)       measure  B: phép đo /token
-import type { Cache, Limit, Measure, Stats } from '../types'
+//   seen      A: số hạn mức engine phiên này thấy lần trước, kèm lúc nó đổi (không ai vẽ)
+import type { Cache, Limit, LimitReading, Measure, Stats } from '../types'
 
 export const STATS0: Stats = { turn: 0, speed: null, turnCost: null, total: 0, context: 0, costAtStart: 0 }
 export const CACHE0: Cache = { expiresAt: null, secondsLeft: null }
 export const LIMITS0: Limit[] = []
 export const FIRED0: string[] = []
 export const MEASURE0: Measure | null = null
+export const SEEN0: Record<string, LimitReading> = {}

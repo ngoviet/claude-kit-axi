@@ -24,6 +24,13 @@ export type Limit = {
   etaMs: number | null
 }
 
+/** Số hạn mức engine của phiên đã trả, và lúc nó đổi lần cuối (ms; 0 khi chưa biết). */
+export type LimitReading = {
+  resetsAt: string
+  percentUsed: number
+  at: number
+}
+
 /** Một phép đo `/token start` đang chạy. */
 export type Measure = {
   label: string
@@ -46,6 +53,7 @@ declare module 'claude-code' {
       warned: number
       limits: Limit[]
       fired: string[]
+      seen: Record<string, LimitReading>
       measure: Measure | null
     }
   }
