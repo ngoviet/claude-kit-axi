@@ -133,7 +133,10 @@ test('A: an idle session shows the newest reading another session saw in the sam
   // Engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên: phiên này còn 47% trong
   // khi phiên khác đã thấy 49% (đo thật 21/11/2026: thanh 47%, máy chủ 49%).
   const resetsAt = new Date(T0 + 4 * 24 * H).toISOString()
-  const { w } = await session($, on, { 'lim:seven_day': { resetsAt, percentUsed: 49, at: T0 - 60_000 } })
+  const store: Record<string, unknown> = {}
+  const { clock, w } = await session($, on, store)
+  await clock.advance(60_000)
+  store['lim:seven_day'] = { resetsAt, percentUsed: 49, at: T0 + 30_000 }
   w.rateLimits = [{ kind: 'seven_day', percentUsed: 47, resetsAt }]
   await turn($)
   expect(await text($, /^49%$/)).toBeDefined()
@@ -183,6 +186,19 @@ test('A: an idle session still holding the old number follows a newer lower read
   await turn($)
   expect(await text($, /^85%$/)).toBeDefined()
   expect((store['lim:seven_day'] as { percentUsed: number }).percentUsed).toBe(85)
+})
+
+test('A: a new session after a reset trusts its engine over a reading from before it started', async ($, on) => {
+  // Phiên A thấy 100% rồi đóng; hạn mức được đặt lại; phiên mới mở thấy 85% từ máy chủ.
+  const resetsAt = new Date(T0 + 3 * 24 * H).toISOString()
+  const store: Record<string, unknown> = { 'lim:seven_day': { resetsAt, percentUsed: 100, at: T0 - H } }
+  const { w } = await session($, on, store)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 85, resetsAt }]
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
+  expect((store['lim:seven_day'] as { percentUsed: number }).percentUsed).toBe(85)
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
 })
 
 test('A: an old stored number without a reading time loses to the engine', async ($, on) => {

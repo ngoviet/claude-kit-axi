@@ -22,10 +22,10 @@ So sánh đầy đủ: `git diff --no-index upstream/session-band plugins/sessio
 
 | ID | Tính năng | Cách làm | Kiểm |
 | --- | --- | --- | --- |
-| A | Hạn mức gói 5h / 7d trên thanh, kèm "⚠1h20" khi tốc độ đốt hiện tại làm đầy cửa sổ trước giờ reset | `$.session.usage().rateLimits`, dùng chung qua `$.store` khoá `lim:<kind>` số đọc mới nhất của mọi phiên trong cùng cửa sổ (sửa 21/11 vì phiên nghỉ giữ số cũ; sửa 23/11: theo lúc đọc chứ không theo số lớn nhất, vì Anthropic có thể đặt lại hạn mức mà không đổi giờ reset); cửa sổ 5h: tốc độ = % tăng từ mốc đầu mod thấy (≥ 10 phút quan sát); cửa sổ 7d: tốc độ trung bình từ lúc cửa sổ mở (giờ reset − 7 ngày), để một đợt chạy dồn không bị nhân thành cả tuần (sửa 18/11); dự báo làm tròn 10 phút, từ 24 giờ trở lên viết dạng "1d9h"; chỉ ghi state khi chữ đổi; cần ≥ 76 cột, thiếu thì bỏ hạn mức trước. Tuỳ chọn `limits` | `features.test.tsx` A×7 |
+| A | Hạn mức gói 5h / 7d trên thanh, kèm "⚠1h20" khi tốc độ đốt hiện tại làm đầy cửa sổ trước giờ reset | `$.session.usage().rateLimits`, dùng chung qua `$.store` khoá `lim:<kind>` số đọc mới nhất của mọi phiên trong cùng cửa sổ (sửa 21/11 vì phiên nghỉ giữ số cũ; sửa 23/11: theo lúc đọc chứ không theo số lớn nhất, vì Anthropic có thể đặt lại hạn mức mà không đổi giờ reset); cửa sổ 5h: tốc độ = % tăng từ mốc đầu mod thấy (≥ 10 phút quan sát); cửa sổ 7d: tốc độ trung bình từ lúc cửa sổ mở (giờ reset − 7 ngày), để một đợt chạy dồn không bị nhân thành cả tuần (sửa 18/11); dự báo làm tròn 10 phút, từ 24 giờ trở lên viết dạng "1d9h"; chỉ ghi state khi chữ đổi; cần ≥ 76 cột, thiếu thì bỏ hạn mức trước. Tuỳ chọn `limits` | `features.test.tsx` A×11 |
 | B | `/token start [nhãn]`, `/token`, `/token stop`: 5 số token (calls · input · cache_write · cache_read · output) + USD của một tác vụ | token cộng từ `usage` của mọi `turn.step` (kể cả subagent); USD = chênh lệch sổ chi phí của phiên (`/cost`), nên không phụ thuộc giả định TTL ghi cache | test B |
 | C | `/spend [ngày]`: chi phí theo ngày và 5 dự án tốn nhất, qua nhiều phiên | `$.store` khoá `day:YYYY-MM-DD`, ghi khi lượt chính xong và khi phiên kết thúc, giữ 120 ngày. Tuỳ chọn `utcOffset` (mặc định `auto`) | test C |
-| D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×2 |
+| D | Cảnh báo theo ngưỡng, mỗi ngưỡng một lần: context 70/85% (báo lại sau khi tụt dưới 50%), hạn mức 80/95% và dự báo đầy (mỗi cửa sổ), ngân sách phiên 75/100% | toast; ngưỡng cao gửi thêm thông báo hệ thống. Tuỳ chọn `alerts`, `budgetUsd` | test D×3 |
 | E | Thông báo cache sắp hết trên Windows / mọi hệ | sau notifier macOS: `$.ui.notify` (bỏ qua kênh chỉ kêu chuông) → `PushNotification` → toast | test E + 4 test cũ |
 
 ## session-band: hạn mức tụt khi Anthropic đặt lại giữa cửa sổ (23/11/2026)
@@ -35,7 +35,7 @@ Gặp thật: Claude đặt lại hạn mức tuần, popup báo 85% nhưng than
 | # | Thay đổi | Kiểm |
 | --- | --- | --- |
 | 1 | `lim:<kind>` trong `$.store` lưu số đọc **mới nhất** kèm lúc đọc (`at`), không còn số lớn nhất. State `seen` nhớ số engine phiên này thấy lần trước: số engine đổi là số máy chủ vừa trả, nên thắng kể cả khi thấp hơn và được ghi; số không đổi thì hiện số trong store nếu store ghi sau, và không ghi đè (phiên nghỉ còn 100% không đè 85% của phiên khác) | test A: reset giữa cửa sổ, phiên nghỉ theo số thấp hơn mới hơn (fail trên mã cũ) |
-| 2 | Bản lưu cũ không có `at` thua số engine, nên máy đang kẹt tự lành ở lượt kế tiếp | test A: số cũ không có lúc đọc |
+| 2 | Lần đầu phiên thấy, số engine thấp hơn store vẫn thắng khi store được ghi trước lúc phiên bắt đầu (`startedAt` của `$.session.usage()`) hoặc không có `at` (bản lưu cũ): phiên mới mở sau reset hiện ngay số mới, máy đang kẹt tự lành ở lượt kế tiếp | test A: phiên mới sau reset, số cũ không có lúc đọc |
 | 3 | Ngưỡng cảnh báo hạn mức đã báo mở lại khi phần trăm tụt dưới ngưỡng trong cùng cửa sổ (như context sau `/compact`) | test D: báo lại sau reset |
 
 Còn một ca: phiên nghỉ còn giữ số trước reset mà nạp lại mod thì lần đầu thấy số cao hơn store và ghi lại số đó; nó tự sửa khi số engine của một phiên đang chạy đổi lần kế.

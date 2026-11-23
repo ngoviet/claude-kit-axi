@@ -33,10 +33,11 @@ type Reading = RawLimit & { at?: number }
  * - Số engine không đổi: có thể đã cũ, nên hiện số trong store nếu store được ghi sau lần
  *   engine phiên này đổi số gần nhất, và không ghi đè store.
  * - Lần đầu phiên thấy (vừa mở hoặc vừa nạp lại mod): số cao hơn store thì ghi; thấp hơn thì
- *   hiện số của store, trừ khi store không có lúc đọc (bản cũ lưu số lớn nhất) thì engine thắng.
+ *   hiện số của store, trừ khi store được ghi trước lúc phiên bắt đầu (`startedAt`) hoặc không
+ *   có lúc đọc (bản cũ lưu số lớn nhất): khi đó số engine mới hơn nên thắng và được ghi.
  * Cửa sổ mới có giờ reset khác nên số cũ tự bị bỏ qua.
  */
-async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promise<RawLimit[]> {
+async function newestLimits($: EngineInterface, raw: readonly RawLimit[], startedAt: number): Promise<RawLimit[]> {
   const now = await $.clock.now()
   const before = await read($, seen)
   const after: Record<string, LimitReading> = {}
@@ -57,7 +58,7 @@ async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promi
     let write = isNew || !same
     if (!isNew && same) {
       if (isFirst) {
-        if (r.percentUsed > same.percentUsed || same.at === undefined) {
+        if (r.percentUsed > same.percentUsed || (same.at ?? 0) < startedAt) {
           write = true
           at = now
         } else show = same.percentUsed
@@ -85,12 +86,12 @@ async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promi
  * chỗ đọc giá trị đó). Trả về phần chi phí tăng thêm từ lần trước, cho lịch sử.
  */
 export async function refresh($: EngineInterface): Promise<number> {
-  const { cost, context, rateLimits } = await $.session.usage()
+  const { startedAt, cost, context, rateLimits } = await $.session.usage()
   const total = cost?.usd ?? 0
   const s = await read($, stats)
   const ctx = context.percent ?? s.context
 
-  const next = readLimits(await newestLimits($, rateLimits), await $.clock.now())
+  const next = readLimits(await newestLimits($, rateLimits, startedAt), await $.clock.now())
   if (!sameLimits(next, await read($, limits))) await update($, limits, () => next)
 
   const gained = Math.max(0, total - s.total)
