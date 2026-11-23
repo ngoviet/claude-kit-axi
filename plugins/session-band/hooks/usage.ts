@@ -2,26 +2,45 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
+import type { LimitReading } from '../types'
+
 import { BUDGET_STEPS, CFG, CONTEXT_REARM, CONTEXT_STEPS, LIMIT_STEPS } from './config'
 import { span, usd } from './lib/format'
 import { readLimits, sameLimits } from './limits'
 import type { RawLimit } from './limits'
 import { notifyOs, projectOf } from './notify'
-import { FIRED0, LIMITS0, STATS0 } from './state'
+import { FIRED0, LIMITS0, SEEN0, STATS0 } from './state'
 import { tr } from './strings'
 
 const fired = atom({ plugin: 'session-band', key: 'fired' } as const, FIRED0)
 const limits = atom({ plugin: 'session-band', key: 'limits' } as const, LIMITS0)
 const stats = atom({ plugin: 'session-band', key: 'stats' } as const, STATS0)
+const seen = atom({ plugin: 'session-band', key: 'seen' } as const, SEEN0)
+
+/** Một số đọc hạn mức kèm lúc đọc (`at`, ms; 0 khi không biết số đó mới hay cũ). */
+type Reading = RawLimit & { at?: number }
 
 /**
  * Engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên, nên phiên đang nghỉ giữ số
- * cũ trong khi phiên khác vẫn tiêu hạn mức (đo 21/11/2026: thanh 47%, máy chủ 49%). Trong
- * cùng một cửa sổ (cùng giờ reset) phần trăm chỉ tăng, nên số lớn nhất mọi phiên từng thấy
- * là số mới nhất: lưu nó vào `$.store` (sống qua các phiên) và hiện số lớn hơn. Cửa sổ mới
- * có giờ reset khác nên số cũ tự bị bỏ qua.
+ * cũ trong khi phiên khác vẫn tiêu hạn mức (đo 21/11/2026: thanh 47%, máy chủ 49%). Phần trăm
+ * lại có thể tụt ngay trong một cửa sổ khi Anthropic đặt lại hạn mức mà không đổi giờ reset
+ * (23/11/2026: thanh kẹt 100%, máy chủ 85%), nên "số lớn nhất" không phải "số mới nhất".
+ *
+ * Vì vậy `$.store` khoá `lim:<kind>` giữ số đọc MỚI NHẤT của mọi phiên kèm lúc đọc, và
+ * `seen` nhớ số engine của phiên này lần trước:
+ * - Số engine đổi so với lần trước: đó là số máy chủ vừa trả, nên tin nó (kể cả khi thấp hơn)
+ *   và ghi vào store.
+ * - Số engine không đổi: có thể đã cũ, nên hiện số trong store nếu store được ghi sau lần
+ *   engine phiên này đổi số gần nhất, và không ghi đè store.
+ * - Lần đầu phiên thấy (vừa mở hoặc vừa nạp lại mod): số cao hơn store thì ghi; thấp hơn thì
+ *   hiện số của store, trừ khi store được ghi trước lúc phiên bắt đầu (`startedAt`) hoặc không
+ *   có lúc đọc (bản cũ lưu số lớn nhất): khi đó số engine mới hơn nên thắng và được ghi.
+ * Cửa sổ mới có giờ reset khác nên số cũ tự bị bỏ qua.
  */
-async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promise<RawLimit[]> {
+async function newestLimits($: EngineInterface, raw: readonly RawLimit[], startedAt: number): Promise<RawLimit[]> {
+  const now = await $.clock.now()
+  const before = await read($, seen)
+  const after: Record<string, LimitReading> = {}
   const out: RawLimit[] = []
   for (const r of raw) {
     if (!r.resetsAt) {
@@ -29,16 +48,36 @@ async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promi
       continue
     }
     const key = `lim:${r.kind}`
-    const seen = (await $.store.get(key).catch(() => undefined)) as RawLimit | undefined
-    if (seen?.resetsAt === r.resetsAt && seen.percentUsed > r.percentUsed) {
-      out.push({ ...r, percentUsed: seen.percentUsed })
-      continue
+    const mine = before[r.kind]
+    const stored = (await $.store.get(key).catch(() => undefined)) as Reading | undefined
+    const same = stored?.resetsAt === r.resetsAt ? stored : undefined
+    const isNew = mine !== undefined && (mine.resetsAt !== r.resetsAt || mine.percentUsed !== r.percentUsed)
+    const isFirst = mine === undefined
+    let show = r.percentUsed
+    let at = isNew ? now : (mine?.at ?? 0)
+    let write = isNew || !same
+    if (!isNew && same) {
+      if (isFirst) {
+        if (r.percentUsed > same.percentUsed || (same.at ?? 0) < startedAt) {
+          write = true
+          at = now
+        } else show = same.percentUsed
+      } else if ((same.at ?? 0) > at) show = same.percentUsed
     }
-    if (seen?.resetsAt !== r.resetsAt || seen.percentUsed !== r.percentUsed) {
-      await $.store.set(key, { resetsAt: r.resetsAt, percentUsed: r.percentUsed }).catch(() => undefined)
+    if (write && (same?.percentUsed !== r.percentUsed || same.at === undefined || isNew)) {
+      await $.store.set(key, { resetsAt: r.resetsAt, percentUsed: r.percentUsed, at: now }).catch(() => undefined)
+      at = now
     }
-    out.push(r)
+    after[r.kind] = { resetsAt: r.resetsAt, percentUsed: r.percentUsed, at }
+    out.push(show === r.percentUsed ? r : { ...r, percentUsed: show })
   }
+  const changed =
+    Object.keys(after).length !== Object.keys(before).length ||
+    Object.entries(after).some(([k, v]) => {
+      const b = before[k]
+      return b === undefined || b.resetsAt !== v.resetsAt || b.percentUsed !== v.percentUsed || b.at !== v.at
+    })
+  if (changed) await update($, seen, () => after)
   return out
 }
 
@@ -47,12 +86,12 @@ async function newestLimits($: EngineInterface, raw: readonly RawLimit[]): Promi
  * chỗ đọc giá trị đó). Trả về phần chi phí tăng thêm từ lần trước, cho lịch sử.
  */
 export async function refresh($: EngineInterface): Promise<number> {
-  const { cost, context, rateLimits } = await $.session.usage()
+  const { startedAt, cost, context, rateLimits } = await $.session.usage()
   const total = cost?.usd ?? 0
   const s = await read($, stats)
   const ctx = context.percent ?? s.context
 
-  const next = readLimits(await newestLimits($, rateLimits), await $.clock.now())
+  const next = readLimits(await newestLimits($, rateLimits, startedAt), await $.clock.now())
   if (!sameLimits(next, await read($, limits))) await update($, limits, () => next)
 
   const gained = Math.max(0, total - s.total)
@@ -83,9 +122,17 @@ export async function checkThresholds($: EngineInterface): Promise<void> {
     if (s.context >= step) await alertOnce($, `ctx:${step}`, t.contextHit(s.context), step === CONTEXT_STEPS[1])
   }
 
-  // Khoá theo giờ reset: mỗi cửa sổ báo lại từ đầu.
+  // Khoá theo giờ reset: mỗi cửa sổ báo lại từ đầu. Hạn mức được đặt lại ngay trong cửa sổ
+  // (phần trăm tụt dưới ngưỡng đã báo): mở lại ngưỡng đó, như context sau /compact.
   const now = await $.clock.now()
-  for (const l of await read($, limits)) {
+  const current = await read($, limits)
+  const stale = (k: string) => {
+    const [prefix, kind, step, window] = k.split(':')
+    const l = current.find(x => x.kind === kind && String(x.resetsAt ?? 'none') === window)
+    return prefix === 'lim' && l !== undefined && l.percent < Number(step)
+  }
+  if ((await read($, fired)).some(stale)) await update($, fired, list => list.filter(k => !stale(k)))
+  for (const l of current) {
     const name = t.limitName(l.kind)
     const window = l.resetsAt ?? 'none'
     for (const step of LIMIT_STEPS) {

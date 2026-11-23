@@ -18,7 +18,18 @@ type World = {
 
 async function session($: Engine, on: On, store: Record<string, unknown> = {}) {
   const clock = mock.clock(on, { now: T0 })
-  mock.store(on, store)
+  // Kho trong bộ nhớ, dùng chung với test: test đọc được số mod ghi và ghi thay phiên khác.
+  on('store.get', (_, e) => ({ value: store[(e as { key: string }).key] }) as never)
+  on('store.set', (_, e) => {
+    const { key, value } = e as { key: string; value: unknown }
+    store[key] = value
+    return { value: undefined } as never
+  })
+  on('store.delete', (_, e) => {
+    delete store[(e as { key: string }).key]
+    return { value: undefined } as never
+  })
+  on('store.keys', () => ({ value: Object.keys(store) }) as never)
   const w: World = { usd: 0, context: 10, rateLimits: [], usage: null }
   const toasts: string[] = []
   const notes: string[] = []
@@ -122,7 +133,10 @@ test('A: an idle session shows the newest reading another session saw in the sam
   // Engine chỉ cập nhật hạn mức theo phản hồi API của chính phiên: phiên này còn 47% trong
   // khi phiên khác đã thấy 49% (đo thật 21/11/2026: thanh 47%, máy chủ 49%).
   const resetsAt = new Date(T0 + 4 * 24 * H).toISOString()
-  const { w } = await session($, on, { 'lim:seven_day': { resetsAt, percentUsed: 49 } })
+  const store: Record<string, unknown> = {}
+  const { clock, w } = await session($, on, store)
+  await clock.advance(60_000)
+  store['lim:seven_day'] = { resetsAt, percentUsed: 49, at: T0 + 30_000 }
   w.rateLimits = [{ kind: 'seven_day', percentUsed: 47, resetsAt }]
   await turn($)
   expect(await text($, /^49%$/)).toBeDefined()
@@ -130,7 +144,7 @@ test('A: an idle session shows the newest reading another session saw in the sam
 })
 
 test('A: a newer reading is shared, and a new window ignores the old one', async ($, on) => {
-  const store = { 'lim:five_hour': { resetsAt: new Date(T0 - H).toISOString(), percentUsed: 90 } }
+  const store: Record<string, unknown> = { 'lim:five_hour': { resetsAt: new Date(T0 - H).toISOString(), percentUsed: 90 } }
   const resetsAt = new Date(T0 + 4 * 24 * H).toISOString()
   const { w } = await session($, on, store)
   w.rateLimits = [
@@ -140,10 +154,75 @@ test('A: a newer reading is shared, and a new window ignores the old one', async
   await turn($)
   expect(await text($, /^5%$/)).toBeDefined()
   expect(await text($, /^90%$/)).toBeUndefined()
-  // Số 52% đã được lưu: một lượt sau engine còn số cũ hơn (50%) thì thanh vẫn giữ 52%.
-  w.rateLimits = [{ kind: 'seven_day', percentUsed: 50, resetsAt }]
+  expect((store['lim:seven_day'] as { percentUsed: number }).percentUsed).toBe(52)
+})
+
+test('A: a reset inside the same window lowers the band and is stored', async ($, on) => {
+  // Anthropic đặt lại hạn mức tuần mà không đổi giờ reset (gặp 23/11/2026: thanh kẹt 100%,
+  // máy chủ 85%). Phiên thấy số tụt từ chính engine phải tin số đó và ghi đè số lớn hơn đã lưu.
+  const resetsAt = new Date(T0 + 3 * 24 * H).toISOString()
+  const store: Record<string, unknown> = {}
+  const { clock, w } = await session($, on, store)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 100, resetsAt }]
   await turn($)
-  expect(await text($, /^52%$/)).toBeDefined()
+  expect(await text($, /^100%$/)).toBeDefined()
+  await clock.advance(10 * 60_000)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 85, resetsAt }]
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
+  expect((store['lim:seven_day'] as { percentUsed: number }).percentUsed).toBe(85)
+})
+
+test('A: an idle session still holding the old number follows a newer lower reading', async ($, on) => {
+  const resetsAt = new Date(T0 + 3 * 24 * H).toISOString()
+  const store: Record<string, unknown> = {}
+  const { clock, w } = await session($, on, store)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 100, resetsAt }]
+  await turn($)
+  // Phiên khác thấy reset và ghi 85% sau đó; engine phiên này vẫn giữ 100%.
+  await clock.advance(10 * 60_000)
+  store['lim:seven_day'] = { resetsAt, percentUsed: 85, at: clock.now() }
+  await clock.advance(60_000)
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
+  expect((store['lim:seven_day'] as { percentUsed: number }).percentUsed).toBe(85)
+})
+
+test('A: a new session after a reset trusts its engine over a reading from before it started', async ($, on) => {
+  // Phiên A thấy 100% rồi đóng; hạn mức được đặt lại; phiên mới mở thấy 85% từ máy chủ.
+  const resetsAt = new Date(T0 + 3 * 24 * H).toISOString()
+  const store: Record<string, unknown> = { 'lim:seven_day': { resetsAt, percentUsed: 100, at: T0 - H } }
+  const { w } = await session($, on, store)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 85, resetsAt }]
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
+  expect((store['lim:seven_day'] as { percentUsed: number }).percentUsed).toBe(85)
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
+})
+
+test('A: an old stored number without a reading time loses to the engine', async ($, on) => {
+  // Bản trước lưu số lớn nhất mà không ghi lúc đọc: phiên mới phải tự lành.
+  const resetsAt = new Date(T0 + 3 * 24 * H).toISOString()
+  const store: Record<string, unknown> = { 'lim:seven_day': { resetsAt, percentUsed: 100 } }
+  const { w } = await session($, on, store)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 85, resetsAt }]
+  await turn($)
+  expect(await text($, /^85%$/)).toBeDefined()
+})
+
+test('D: a limit alert fires again after a reset inside the same window', async ($, on) => {
+  const resetsAt = new Date(T0 + 3 * 24 * H).toISOString()
+  const { clock, w, toasts } = await session($, on)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 81, resetsAt }]
+  await turn($)
+  await clock.advance(10 * 60_000)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 20, resetsAt }]
+  await turn($)
+  await clock.advance(10 * 60_000)
+  w.rateLimits = [{ kind: 'seven_day', percentUsed: 82, resetsAt }]
+  await turn($)
+  expect(toasts.filter(t => t.includes('82%')).length).toBe(1)
 })
 
 test('A: limits off hides them', { options: { limits: 'off' } }, async ($, on) => {
