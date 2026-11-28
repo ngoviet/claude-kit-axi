@@ -8,6 +8,8 @@
 
 **English** · [Tiếng Việt](README.vi.md)
 
+> **Archived.** Both mods were rewritten as one mod, **session-meter**, in [ngoviet/claude-meter-axi](https://github.com/ngoviet/claude-meter-axi). This repository is read-only and no longer maintained.
+
 Two mods for Claude Code, the terminal and the desktop app. **session-band** puts the session on one line above
 the prompt: turn, output speed, cost of the turn and of the session, a countdown to when the prompt cache expires,
 plan limits with a "fills in" forecast, and context fill. **agents-panel** is a live panel of every subagent with

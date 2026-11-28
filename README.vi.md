@@ -8,6 +8,8 @@
 
 [English](README.md) · **Tiếng Việt**
 
+> **Đã lưu trữ.** Hai mod đã được viết lại thành một mod **session-meter** ở [ngoviet/claude-meter-axi](https://github.com/ngoviet/claude-meter-axi). Repo này chỉ đọc, không còn bảo trì.
+
 Hai mod cho Claude Code, chạy cả trong terminal lẫn desktop app. **session-band** gom phiên làm việc vào một dòng
 phía trên ô nhập: lượt, tốc độ trả lời, chi phí lượt và chi phí phiên, đếm ngược tới lúc cache prompt hết hạn, hạn
 mức gói kèm dự báo lúc đầy, và mức đầy context. **agents-panel** là khung theo dõi mọi subagent với model, context,
